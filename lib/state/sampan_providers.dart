@@ -370,6 +370,9 @@ class SampanController extends StateNotifier<SampanAppState> {
       receivedAt: now,
     );
 
+    if (mounted) {
+      state = state.copyWith(peers: _database.currentPeers);
+    }
     HapticFeedback.heavyImpact();
   }
 
@@ -385,6 +388,9 @@ class SampanController extends StateNotifier<SampanAppState> {
       lastSeen: DateTime.now(),
     );
     await _database.upsertPeer(restored);
+    if (mounted) {
+      state = state.copyWith(peers: _database.currentPeers);
+    }
     HapticFeedback.lightImpact();
   }
 
@@ -430,6 +436,9 @@ class SampanController extends StateNotifier<SampanAppState> {
       isEncrypted: true,
     );
     await _database.insertMessage(msg);
+    if (mounted) {
+      state = state.copyWith(messages: _database.currentMessages);
+    }
   }
 
   /// Broadcasts a one-tap Offline Landmark Ping (Section 4, Module 2).
@@ -455,16 +464,19 @@ class SampanController extends StateNotifier<SampanAppState> {
       isEncrypted: true,
     );
 
-    state = state.copyWith(
-      userLatitude: landmark.latitude,
-      userLongitude: landmark.longitude,
-    );
     _softApHubService.updateHostLocation(
       latitude: landmark.latitude,
       longitude: landmark.longitude,
       landmark: landmark.name,
     );
     await _database.insertMessage(ping);
+    if (mounted) {
+      state = state.copyWith(
+        userLatitude: landmark.latitude,
+        userLongitude: landmark.longitude,
+        messages: _database.currentMessages,
+      );
+    }
     HapticFeedback.mediumImpact();
   }
 
@@ -535,6 +547,12 @@ class SampanController extends StateNotifier<SampanAppState> {
     );
 
     await _database.insertMessage(sosMsg);
+    if (mounted) {
+      state = state.copyWith(
+        messages: _database.currentMessages,
+        activeSosAlert: sosMsg,
+      );
+    }
     HapticFeedback.heavyImpact();
   }
 

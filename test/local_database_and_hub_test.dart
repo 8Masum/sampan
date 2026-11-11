@@ -145,6 +145,7 @@ void main() {
           }),
         );
         final HttpClientResponse postRes = await postReq.close();
+        await postRes.drain<void>();
         expect(postRes.statusCode, equals(200));
 
         final List<MessageModel> msgs = db.currentMessages;
@@ -154,6 +155,7 @@ void main() {
         final HttpClientRequest apkReq =
             await client.get('127.0.0.1', port, '/download/sampan.apk');
         final HttpClientResponse apkRes = await apkReq.close();
+        await apkRes.drain<void>();
         expect(apkRes.statusCode, equals(200));
         expect(hub.apkDownloadsCount, equals(1));
       } finally {

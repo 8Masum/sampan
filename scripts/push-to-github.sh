@@ -48,9 +48,7 @@ echo "[4/4] Pushing branch and tag (${TAG})..."
 BRANCH="$(git branch --show-current)"
 git push -u origin "$BRANCH"
 
-if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-  git tag -a "$TAG" -m "Sampan ${TAG} — Initial Local-First P2P Mesh Release"
-fi
-git push origin "$TAG"
+git tag -fa "$TAG" -m "Sampan ${TAG} — Local-First P2P Mesh Release"
+git push origin "$TAG" --force
 
 echo "✅ Pushed to https://github.com/${FULL_REPO}"

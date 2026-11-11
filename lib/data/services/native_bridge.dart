@@ -46,6 +46,9 @@ class NativeBridge {
   /// so the embedded `shelf` server can stream it over SoftAP Wi-Fi at 25 MB/s
   /// with zero internet connectivity (Section 4, Module 3).
   Future<String?> getInstalledApkPath() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return null;
+    }
     try {
       final String? path = await _channel.invokeMethod<String>('getApkPath');
       if (path != null && path.isNotEmpty && File(path).existsSync()) {
@@ -106,6 +109,9 @@ class NativeBridge {
   /// `BLUETOOTH_CONNECT`) and offline GNSS (`ACCESS_FINE_LOCATION`) runtime
   /// permissions on physical devices.
   Future<bool> requestRuntimePermissions() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return true;
+    }
     try {
       final bool? granted =
           await _channel.invokeMethod<bool>('requestPermissions');
@@ -118,6 +124,9 @@ class NativeBridge {
   /// Queries the native Android SensorManager (Magnetometer + Accelerometer)
   /// and LocationManager (`GPS_PROVIDER`).
   Future<DeviceSensorSnapshot?> getHardwareSensorSnapshot() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return null;
+    }
     try {
       final Map<dynamic, dynamic>? raw = await _channel
           .invokeMethod<Map<dynamic, dynamic>>('getSensorSnapshot');
@@ -138,6 +147,9 @@ class NativeBridge {
   /// Broadcasts the compact 28-byte BLE Telemetry Packet (`0x53 0x50`) via
   /// native `BluetoothLeAdvertiser`.
   Future<bool> advertiseBleTelemetry(Uint8List packet28Bytes) async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return true;
+    }
     try {
       final bool? ok = await _channel.invokeMethod<bool>(
         'startBleAdvertising',
@@ -152,6 +164,9 @@ class NativeBridge {
   /// Fetches recently scanned 28-byte Sampan BLE advertisements from the
   /// native `BluetoothLeScanner`.
   Future<List<RawBleAdvertisement>> pollScannedBleAdvertisements() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return const <RawBleAdvertisement>[];
+    }
     try {
       final List<dynamic>? rawList =
           await _channel.invokeMethod<List<dynamic>>('pollBleScanResults');

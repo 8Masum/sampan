@@ -85,11 +85,8 @@ $currentBranch = (git branch --show-current).Trim()
 git push -u origin $currentBranch
 
 if ($Tag) {
-    $existingTag = git tag -l $Tag
-    if (-not $existingTag) {
-        git tag -a $Tag -m "Sampan $Tag — Initial Local-First P2P Mesh Release"
-    }
-    git push origin $Tag
+    git tag -fa $Tag -m "Sampan $Tag — Local-First P2P Mesh Release"
+    git push origin $Tag --force
 }
 
 Write-Host "`n======================================================" -ForegroundColor Green

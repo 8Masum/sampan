@@ -301,6 +301,13 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
         false,
         `Redundant dart:ui import alongside material.dart in ${rel}`,
       );
+      if (content.includes('PlatformDispatcher')) {
+        assert.equal(
+          /import\s+['"]package:flutter\/foundation\.dart['"]/.test(content),
+          true,
+          `File ${rel} uses PlatformDispatcher and must import package:flutter/foundation.dart`,
+        );
+      }
     }
 
     // 3. Enforce strict-inference (no untyped final variables) and lowerCamelCase getters
