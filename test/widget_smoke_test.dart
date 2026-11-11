@@ -1,24 +1,56 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sampan/app.dart';
 import 'package:sampan/data/database/local_database.dart';
+import 'package:sampan/data/services/app_update_service.dart';
 import 'package:sampan/state/sampan_providers.dart';
 
 void main() {
   testWidgets(
-      'Full Sampan flow: Onboarding -> Compass Radar -> Virtual Leash -> Sunlight Mode -> Caravan Chat & SOS',
+      'Full Sampan flow: Onboarding -> Compass Radar -> Virtual Leash -> Sunlight Mode -> Caravan Chat & SOS -> GitHub Auto-Update',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
 
     final LocalDatabase testDb = LocalDatabase();
+    final AppUpdateService mockUpdateService = AppUpdateService(
+      jsonFetcher: (Uri _) async => <String, dynamic>{
+        'tag_name': 'v1.1.0',
+        'name': 'Sampan (সাম্পান) v1.1.0',
+        'body': 'OTA GitHub Release auto-update test',
+        'draft': false,
+        'prerelease': false,
+        'assets': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'name': 'Sampan.apk',
+            'size': 22020096,
+            'browser_download_url':
+                'https://github.com/themasum-com/sampan/releases/download/v1.1.0/Sampan.apk',
+          },
+        ],
+      },
+      apkDownloader: ({
+        required Uri url,
+        required File destinationFile,
+        void Function(double progress)? onProgress,
+      }) async {
+        onProgress?.call(1.0);
+        await destinationFile.writeAsBytes(
+          const <int>[0x50, 0x4B, 0x03, 0x04, 0x01, 0x02],
+        );
+        return destinationFile;
+      },
+    );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
           localDatabaseProvider.overrideWithValue(testDb),
+          appUpdateServiceProvider.overrideWithValue(mockUpdateService),
         ],
         child: const SampanApp(),
       ),
@@ -118,6 +150,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey<String>('toggle-softap-server-btn')),
+      findsOneWidget,
+    );
+
+    // 6. Open GitHub Release Auto-Update Sheet, check & trigger APK install
+    await tester.tap(
+      find.byKey(const ValueKey<String>('open-update-sheet-btn')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
+    expect(find.textContaining('v1.1.0'), findsWidgets);
+
+    final Finder installBtn =
+        find.byKey(const ValueKey<String>('download-install-update-btn'));
+    await tester.ensureVisible(installBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(installBtn);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Launching Android package installer'),
       findsOneWidget,
     );
 

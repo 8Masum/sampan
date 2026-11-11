@@ -11,6 +11,14 @@ class SampanConstants {
   static const String tagline = 'Navigating crowds, tides, and trails together.';
   static const String appVersion = '1.0.0';
 
+  /// GitHub Release OTA Auto-Update Endpoints.
+  static const String githubOwner = 'themasum-com';
+  static const String githubRepo = 'sampan';
+  static const String githubLatestReleaseApiUrl =
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
+  static const String githubLatestApkDownloadUrl =
+      'https://github.com/$githubOwner/$githubRepo/releases/latest/download/Sampan.apk';
+
   /// Open 128-bit BLE Service & Characteristic UUIDs (Section 3 & 6).
   static const String bleServiceUuid = '00005350-0000-1000-8000-00805f9b34fb';
   static const String bleTelemetryCharacteristicUuid =

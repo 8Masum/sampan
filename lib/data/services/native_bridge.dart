@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:sampan/core/constants/protocol_constants.dart';
 
 /// Snapshot of device magnetometer compass heading and offline satellite
 /// GNSS coordinates.
@@ -76,6 +77,42 @@ class NativeBridge {
       // Fallback when running in tests or non-Android platforms.
     }
     return null;
+  }
+
+  /// Queries the installed Android package `versionName` via `PackageManager`.
+  Future<String> getInstalledAppVersion() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return SampanConstants.appVersion;
+    }
+    try {
+      final String? ver = await _channel.invokeMethod<String>('getAppVersion');
+      if (ver != null && ver.trim().isNotEmpty) {
+        return ver.trim();
+      }
+    } on Object {
+      // Fallback to compile-time version on non-Android platforms or tests.
+    }
+    return SampanConstants.appVersion;
+  }
+
+  /// Launches the native Android package installer (`Intent.ACTION_VIEW` via
+  /// `ApkFileProvider`) for the downloaded GitHub Release APK.
+  ///
+  /// Returns `'installer_launched'`, `'permission_requested'` (if Android 8+
+  /// opened the "Install unknown apps" settings screen), or `'failed'`.
+  Future<String> installDownloadedApk(String filePath) async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return 'installer_launched';
+    }
+    try {
+      final String? status = await _channel.invokeMethod<String>(
+        'installApk',
+        <String, dynamic>{'filePath': filePath},
+      );
+      return status ?? 'failed';
+    } on Object {
+      return 'failed';
+    }
   }
 
   /// Enumerates non-loopback IPv4 LAN/Hotspot addresses (`192.168.43.1`, etc.).

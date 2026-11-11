@@ -14,6 +14,7 @@ import 'package:sampan/data/database/local_database.dart';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/services/app_update_service.dart';
 import 'package:sampan/data/services/ble_mesh_service.dart';
 import 'package:sampan/data/services/native_bridge.dart';
 import 'package:sampan/data/services/softap_hub_service.dart';
@@ -36,6 +37,13 @@ class SampanAppState {
     required this.softApClientsCount,
     required this.softApApkDownloads,
     required this.isBleBeaconing,
+    this.installedVersion = SampanConstants.appVersion,
+    this.availableUpdate,
+    this.isCheckingForUpdate = false,
+    this.isDownloadingUpdate = false,
+    this.updateDownloadProgress = 0.0,
+    this.updateStatusMessage,
+    this.isUpdateBannerDismissed = false,
     this.identity,
     this.selectedTargetPeerId,
     this.activeDmPeerId,
@@ -79,9 +87,19 @@ class SampanAppState {
   final int softApClientsCount;
   final int softApApkDownloads;
   final bool isBleBeaconing;
+  final String installedVersion;
+  final ReleaseUpdateInfo? availableUpdate;
+  final bool isCheckingForUpdate;
+  final bool isDownloadingUpdate;
+  final double updateDownloadProgress;
+  final String? updateStatusMessage;
+  final bool isUpdateBannerDismissed;
 
   bool get isSunlightMode =>
       visualMode == SampanVisualMode.sunlightHighContrast;
+
+  bool get hasAvailableUpdate =>
+      availableUpdate != null && availableUpdate!.isUpdateAvailable;
 
   PeerModel? get selectedTargetPeer {
     if (peers.isEmpty) return null;
@@ -126,6 +144,15 @@ class SampanAppState {
     int? softApClientsCount,
     int? softApApkDownloads,
     bool? isBleBeaconing,
+    String? installedVersion,
+    ReleaseUpdateInfo? availableUpdate,
+    bool clearAvailableUpdate = false,
+    bool? isCheckingForUpdate,
+    bool? isDownloadingUpdate,
+    double? updateDownloadProgress,
+    String? updateStatusMessage,
+    bool clearUpdateStatusMessage = false,
+    bool? isUpdateBannerDismissed,
   }) {
     return SampanAppState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -149,12 +176,24 @@ class SampanAppState {
       softApClientsCount: softApClientsCount ?? this.softApClientsCount,
       softApApkDownloads: softApApkDownloads ?? this.softApApkDownloads,
       isBleBeaconing: isBleBeaconing ?? this.isBleBeaconing,
+      installedVersion: installedVersion ?? this.installedVersion,
+      availableUpdate:
+          clearAvailableUpdate ? null : (availableUpdate ?? this.availableUpdate),
+      isCheckingForUpdate: isCheckingForUpdate ?? this.isCheckingForUpdate,
+      isDownloadingUpdate: isDownloadingUpdate ?? this.isDownloadingUpdate,
+      updateDownloadProgress:
+          updateDownloadProgress ?? this.updateDownloadProgress,
+      updateStatusMessage: clearUpdateStatusMessage
+          ? null
+          : (updateStatusMessage ?? this.updateStatusMessage),
+      isUpdateBannerDismissed:
+          isUpdateBannerDismissed ?? this.isUpdateBannerDismissed,
     );
   }
 }
 
 /// Core controller coordinating BLE Mesh, Sensor Fusion, Local Database,
-/// and SoftAP Embedded Server.
+/// SoftAP Embedded Server, and GitHub Release Auto-Updater.
 class SampanController extends StateNotifier<SampanAppState> {
   SampanController({
     required LocalDatabase database,
@@ -162,11 +201,14 @@ class SampanController extends StateNotifier<SampanAppState> {
     required BleMeshService bleMeshService,
     required SoftApHubService softApHubService,
     NativeBridge nativeBridge = const NativeBridge(),
+    AppUpdateService? appUpdateService,
   })  : _database = database,
         _cryptoService = cryptoService,
         _bleMeshService = bleMeshService,
         _softApHubService = softApHubService,
         _nativeBridge = nativeBridge,
+        _appUpdateService =
+            appUpdateService ?? AppUpdateService(nativeBridge: nativeBridge),
         super(SampanAppState.initial()) {
     _init();
   }
@@ -176,6 +218,7 @@ class SampanController extends StateNotifier<SampanAppState> {
   final BleMeshService _bleMeshService;
   final SoftApHubService _softApHubService;
   final NativeBridge _nativeBridge;
+  final AppUpdateService _appUpdateService;
 
   static const String kFallbackLocalPublicKeyHex =
       '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff';
@@ -246,14 +289,19 @@ class SampanController extends StateNotifier<SampanAppState> {
     });
 
     final List<String> localIps = await _nativeBridge.getLocalIpv4Addresses();
+    final String installedVer = await _nativeBridge.getInstalledAppVersion();
     if (!mounted) return;
-    state = state.copyWith(softApIps: localIps);
+    state = state.copyWith(
+      softApIps: localIps,
+      installedVersion: installedVer,
+    );
 
     if (!Platform.environment.containsKey('FLUTTER_TEST')) {
       _hardwareSyncTimer = Timer.periodic(
         const Duration(seconds: 2),
         (_) => refreshHardwareSensors(),
       );
+      unawaited(checkForAppUpdate(silent: true));
     }
   }
 
@@ -653,6 +701,110 @@ class SampanController extends StateNotifier<SampanAppState> {
     );
   }
 
+  /// Checks GitHub Releases (`themasum-com/sampan`) for a newer APK version.
+  Future<ReleaseUpdateInfo?> checkForAppUpdate({bool silent = false}) async {
+    if (!mounted) return null;
+    state = state.copyWith(
+      isCheckingForUpdate: true,
+      updateStatusMessage:
+          silent ? state.updateStatusMessage : 'Checking GitHub Releases...',
+    );
+
+    try {
+      final ReleaseUpdateInfo info = await _appUpdateService.checkForUpdate(
+        currentVersionOverride: state.installedVersion,
+      );
+      if (!mounted) return info;
+
+      final String statusMsg = info.isUpdateAvailable
+          ? 'Update ${info.tagName} (${info.formattedSize}) is available!'
+          : 'You are on the latest version (v${info.currentVersion}).';
+
+      state = state.copyWith(
+        availableUpdate: info,
+        isCheckingForUpdate: false,
+        isUpdateBannerDismissed:
+            info.isUpdateAvailable ? false : state.isUpdateBannerDismissed,
+        updateStatusMessage: statusMsg,
+      );
+      return info;
+    } on Object {
+      if (mounted) {
+        state = state.copyWith(
+          isCheckingForUpdate: false,
+          updateStatusMessage: silent
+              ? state.updateStatusMessage
+              : 'Offline — could not reach GitHub Releases.',
+        );
+      }
+      return null;
+    }
+  }
+
+  /// Downloads `Sampan.apk` from the latest GitHub Release and launches the
+  /// native Android package installer (`ApkFileProvider`).
+  Future<String> downloadAndInstallAppUpdate() async {
+    if (state.isDownloadingUpdate) return 'busy';
+
+    final ReleaseUpdateInfo targetRelease = state.availableUpdate ??
+        ReleaseUpdateInfo(
+          currentVersion: state.installedVersion,
+          latestVersion: state.installedVersion,
+          tagName: 'v${state.installedVersion}',
+          releaseTitle: 'Sampan Latest Release',
+          releaseNotes: 'Direct APK download from GitHub Releases.',
+          apkDownloadUrl: SampanConstants.githubLatestApkDownloadUrl,
+          isUpdateAvailable: false,
+        );
+
+    state = state.copyWith(
+      isDownloadingUpdate: true,
+      updateDownloadProgress: 0.0,
+      updateStatusMessage:
+          'Downloading ${targetRelease.tagName} from GitHub Releases...',
+    );
+
+    try {
+      final String result = await _appUpdateService.downloadAndInstallUpdate(
+        releaseInfo: targetRelease,
+        onProgress: (double progress) {
+          if (mounted) {
+            state = state.copyWith(updateDownloadProgress: progress);
+          }
+        },
+      );
+      if (!mounted) return result;
+
+      final String message = switch (result) {
+        'installer_launched' =>
+          'APK downloaded. Launching Android package installer...',
+        'permission_requested' =>
+          'Enable "Allow from this source" in Settings, then return to Sampan to finish installing.',
+        _ => 'Could not launch Android package installer.',
+      };
+
+      state = state.copyWith(
+        isDownloadingUpdate: false,
+        updateDownloadProgress: 1.0,
+        updateStatusMessage: message,
+      );
+      return result;
+    } on Object {
+      if (mounted) {
+        state = state.copyWith(
+          isDownloadingUpdate: false,
+          updateStatusMessage:
+              'Update download failed. Check your internet connection and try again.',
+        );
+      }
+      return 'failed';
+    }
+  }
+
+  void dismissUpdateBanner() {
+    state = state.copyWith(isUpdateBannerDismissed: true);
+  }
+
   @override
   void dispose() {
     _hardwareSyncTimer?.cancel();
@@ -693,6 +845,11 @@ final Provider<SoftApHubService> softApHubServiceProvider =
   return hub;
 });
 
+final Provider<AppUpdateService> appUpdateServiceProvider =
+    Provider<AppUpdateService>((Ref ref) {
+  return AppUpdateService();
+});
+
 final StateNotifierProvider<SampanController, SampanAppState>
     sampanControllerProvider =
     StateNotifierProvider<SampanController, SampanAppState>((Ref ref) {
@@ -701,5 +858,6 @@ final StateNotifierProvider<SampanController, SampanAppState>
     cryptoService: ref.watch(identityCryptoServiceProvider),
     bleMeshService: ref.watch(bleMeshServiceProvider),
     softApHubService: ref.watch(softApHubServiceProvider),
+    appUpdateService: ref.watch(appUpdateServiceProvider),
   );
 });

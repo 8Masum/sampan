@@ -75,6 +75,39 @@ jobs:
       - name: Run Flutter unit & widget tests
         run: flutter test
 
+      - name: Configure Persistent APK Signing Keystore (for Seamless OTA Auto-Updates)
+        env:
+          SAMPAN_KEYSTORE_BASE64: ${{ secrets.SAMPAN_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/.android"
+          rm -f "$HOME/.android/debug.keystore"
+          if [ -n "$SAMPAN_KEYSTORE_BASE64" ]; then
+            echo "Restoring persistent APK signing keystore from SAMPAN_KEYSTORE_BASE64..."
+            echo "$SAMPAN_KEYSTORE_BASE64" | base64 --decode > /tmp/sampan-input.keystore
+            keytool -importkeystore \
+              -srckeystore /tmp/sampan-input.keystore \
+              -srcstorepass android \
+              -destkeystore "$HOME/.android/debug.keystore" \
+              -deststorepass android \
+              -destkeypass android \
+              -alias androiddebugkey \
+              -noprompt || cp /tmp/sampan-input.keystore "$HOME/.android/debug.keystore"
+            rm -f /tmp/sampan-input.keystore
+          else
+            echo "Generating fallback signing keystore..."
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "Verified signing keystore fingerprint:"
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E "Alias|SHA256"
+
       - name: Build Standalone Release APK
         run: flutter build apk --release
 
@@ -88,6 +121,8 @@ jobs:
             exit 1
           fi
           echo "Found release APK: $APK_FILE"
+          echo "APK signing certificate:"
+          keytool -printcert -jarfile "$APK_FILE" | grep -E "Owner|SHA256" || true
 
           RAW_VER=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           PKG_VERSION="v${RAW_VER:-1.0.0}"

@@ -361,6 +361,30 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     mainActivityKt.includes('onRequestPermissionsResult'),
     'MainActivity.kt must handle onRequestPermissionsResult to start BLE/GNSS after user grants permissions',
   );
+  assert.ok(
+    mainActivityKt.includes('class ApkFileProvider : ContentProvider()') &&
+      mainActivityKt.includes('"installApk"'),
+    'MainActivity.kt must provide ApkFileProvider and installApk handler for GitHub Release OTA updates',
+  );
+
+  const androidManifest = fs.readFileSync(
+    path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml'),
+    'utf8',
+  );
+  assert.ok(
+    androidManifest.includes('android.permission.REQUEST_INSTALL_PACKAGES') &&
+      androidManifest.includes('com.themasum.sampan.fileprovider'),
+    'AndroidManifest.xml must declare REQUEST_INSTALL_PACKAGES and ApkFileProvider authority',
+  );
+
+  const workflowYml = fs.readFileSync(
+    path.join(ROOT, '.github', 'workflows', 'build-apk.yml'),
+    'utf8',
+  );
+  assert.ok(
+    workflowYml.includes('SAMPAN_KEYSTORE_BASE64'),
+    'build-apk.yml must use persistent SAMPAN_KEYSTORE_BASE64 signing so Android allows in-place APK auto-updates',
+  );
 });
 
 test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS ingestion & APK route', async () => {
