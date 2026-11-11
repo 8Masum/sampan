@@ -1,0 +1,33 @@
+# Flutter / Dart build artifacts
+.dart_tool/
+.packages
+build/
+pubspec.lock
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# Generated platform runner artifacts (kept clean; AndroidManifest & MainActivity are tracked)
+android/.gradle/
+android/captures/
+android/local.properties
+android/GeneratedPluginRegistrant.java
+android/key.properties
+*.jks
+*.keystore
+
+# iOS / macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Environment & OS files
+.env
+.env.*
+.DS_Store
+Thumbs.db
+release-assets/
+coverage/

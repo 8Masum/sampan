@@ -1,0 +1,180 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+
+/// Snapshot of device magnetometer compass heading and offline satellite
+/// GNSS coordinates.
+class DeviceSensorSnapshot {
+  const DeviceSensorSnapshot({
+    required this.headingDegrees,
+    required this.latitude,
+    required this.longitude,
+    required this.speedMetersPerSecond,
+    required this.isCompassCalibrated,
+    required this.isHardwareGnss,
+  });
+
+  final double headingDegrees;
+  final double latitude;
+  final double longitude;
+  final double speedMetersPerSecond;
+  final bool isCompassCalibrated;
+  final bool isHardwareGnss;
+}
+
+/// Raw BLE advertisement frame received from the platform scanner.
+class RawBleAdvertisement {
+  const RawBleAdvertisement({
+    required this.deviceAddress,
+    required this.rssiDbm,
+    required this.payload,
+  });
+
+  final String deviceAddress;
+  final int rssiDbm;
+  final Uint8List payload;
+}
+
+/// Platform channel abstraction isolating native Android BLE, GNSS,
+/// Magnetometer, and APK file path inspection.
+class NativeBridge {
+  const NativeBridge();
+
+  static const MethodChannel _channel = MethodChannel('sampan.mesh/native');
+
+  /// Returns the path to the currently installed Android APK (`sourceDir`)
+  /// so the embedded `shelf` server can stream it over SoftAP Wi-Fi at 25 MB/s
+  /// with zero internet connectivity (Section 4, Module 3).
+  Future<String?> getInstalledApkPath() async {
+    try {
+      final String? path = await _channel.invokeMethod<String>('getApkPath');
+      if (path != null && path.isNotEmpty && File(path).existsSync()) {
+        return path;
+      }
+    } on Object {
+      // Fallback when running in tests or non-Android platforms.
+    }
+    return null;
+  }
+
+  /// Enumerates non-loopback IPv4 LAN/Hotspot addresses (`192.168.43.1`, etc.).
+  Future<List<String>> getLocalIpv4Addresses() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return const <String>['192.168.43.1'];
+    }
+
+    final Set<String> addresses = <String>{};
+    try {
+      final List<NetworkInterface> interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
+      for (final NetworkInterface iface in interfaces) {
+        for (final InternetAddress addr in iface.addresses) {
+          if (!addr.isLoopback && addr.address.isNotEmpty) {
+            addresses.add(addr.address);
+          }
+        }
+      }
+    } on Object {
+      // Ignore interface enumeration errors in restricted environments.
+    }
+
+    if (addresses.isEmpty) {
+      try {
+        final List<dynamic>? nativeIps =
+            await _channel.invokeMethod<List<dynamic>>('getLocalIpAddresses');
+        if (nativeIps != null) {
+          for (final dynamic ip in nativeIps) {
+            if (ip is String && ip.isNotEmpty) {
+              addresses.add(ip);
+            }
+          }
+        }
+      } on Object {
+        // Ignore platform channel errors in test environments.
+      }
+    }
+
+    if (addresses.isEmpty) {
+      addresses.add('192.168.43.1');
+    }
+    return addresses.toList(growable: false);
+  }
+
+  /// Requests Android 12+ BLE (`BLUETOOTH_SCAN`, `BLUETOOTH_ADVERTISE`,
+  /// `BLUETOOTH_CONNECT`) and offline GNSS (`ACCESS_FINE_LOCATION`) runtime
+  /// permissions on physical devices.
+  Future<bool> requestRuntimePermissions() async {
+    try {
+      final bool? granted =
+          await _channel.invokeMethod<bool>('requestPermissions');
+      return granted ?? false;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Queries the native Android SensorManager (Magnetometer + Accelerometer)
+  /// and LocationManager (`GPS_PROVIDER`).
+  Future<DeviceSensorSnapshot?> getHardwareSensorSnapshot() async {
+    try {
+      final Map<dynamic, dynamic>? raw = await _channel
+          .invokeMethod<Map<dynamic, dynamic>>('getSensorSnapshot');
+      if (raw == null) return null;
+      return DeviceSensorSnapshot(
+        headingDegrees: (raw['headingDegrees'] as num?)?.toDouble() ?? 0.0,
+        latitude: (raw['latitude'] as num?)?.toDouble() ?? 21.4272,
+        longitude: (raw['longitude'] as num?)?.toDouble() ?? 91.9702,
+        speedMetersPerSecond: (raw['speedMps'] as num?)?.toDouble() ?? 0.0,
+        isCompassCalibrated: (raw['isCalibrated'] as bool?) ?? true,
+        isHardwareGnss: (raw['hasGpsFix'] as bool?) ?? false,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Broadcasts the compact 28-byte BLE Telemetry Packet (`0x53 0x50`) via
+  /// native `BluetoothLeAdvertiser`.
+  Future<bool> advertiseBleTelemetry(Uint8List packet28Bytes) async {
+    try {
+      final bool? ok = await _channel.invokeMethod<bool>(
+        'startBleAdvertising',
+        <String, dynamic>{'payload': packet28Bytes},
+      );
+      return ok ?? false;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Fetches recently scanned 28-byte Sampan BLE advertisements from the
+  /// native `BluetoothLeScanner`.
+  Future<List<RawBleAdvertisement>> pollScannedBleAdvertisements() async {
+    try {
+      final List<dynamic>? rawList =
+          await _channel.invokeMethod<List<dynamic>>('pollBleScanResults');
+      if (rawList == null) return const <RawBleAdvertisement>[];
+
+      final List<RawBleAdvertisement> out = <RawBleAdvertisement>[];
+      for (final dynamic item in rawList) {
+        if (item is Map<dynamic, dynamic>) {
+          final Uint8List? payload = item['payload'] as Uint8List?;
+          if (payload != null) {
+            out.add(
+              RawBleAdvertisement(
+                deviceAddress: (item['address'] as String?) ?? 'unknown',
+                rssiDbm: (item['rssi'] as num?)?.toInt() ?? -70,
+                payload: payload,
+              ),
+            );
+          }
+        }
+      }
+      return out;
+    } on Object {
+      return const <RawBleAdvertisement>[];
+    }
+  }
+}
