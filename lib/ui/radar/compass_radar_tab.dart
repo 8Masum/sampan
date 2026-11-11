@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sampan/core/math/geo_math.dart';
+import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/models/peer_model.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/radar/compass_dial_painter.dart';
 
-/// Module 1: Directional Compass Radar & "Virtual Leash"
-/// (Section 4, Module 1 of `SAMPAN_BLUEPRINT.md`).
+/// Module 1: Minimalist Material Design 3 Expressive Compass Radar & Safety Leash.
 class CompassRadarTab extends ConsumerWidget {
   const CompassRadarTab({super.key});
 
@@ -43,16 +43,14 @@ class CompassRadarTab extends ConsumerWidget {
       deviceHeadingDeg: state.compassHeadingDegrees,
     );
     final String cardinal = GeoMath.cardinalDirectionFromBearing(bearingDeg);
+    final String formattedBearing =
+        (bearingDeg.round() % 360).toString().padLeft(3, '0');
+    final bool isDrifted = target?.isLeashFrozen ?? false;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: <Widget>[
-        // Companion Selector Strip
-        Text(
-          'Homing Target (Caravan Peers)',
-          style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
+        // 1. Companion Pill Selector Strip
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -66,111 +64,173 @@ class CompassRadarTab extends ConsumerWidget {
                   onSelected: (_) => controller.selectTargetPeer(peer.id),
                   avatar: Text(peer.avatarIcon),
                   label: Text(
-                    '${peer.displayName}${peer.isGuide ? ' (Guide)' : ''}'
+                    '${peer.displayName.split(' ').first}'
+                    '${peer.isGuide ? ' · Guide' : ''}'
                     '${peer.isLeashFrozen ? ' ⚠️' : ''}',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               );
             }).toList(),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        // 3D-Styled Compass Homing Dial with Spring Physics (Curves.elasticOut)
-        Center(
-          child: SizedBox(
-            width: 268,
-            height: 268,
-            child: _SpringCompassDial(
-              deviceHeadingDegrees: state.compassHeadingDegrees,
-              relativeNeedleDegrees: relativeNeedleDeg,
-              isAlignedWithTarget: isAligned,
-              userLatitude: state.userLatitude,
-              userLongitude: state.userLongitude,
-              peers: state.peers,
-              selectedPeerId: target?.id,
-              isHighContrast: state.isSunlightMode,
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Alignment Banner (±10° Haptic Lock)
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        // 2. M3 Expressive Hero Radar Card (Electric Violet #6755EF + Acid Lime #F4FF90)
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
           decoration: BoxDecoration(
-            color: isAligned
-                ? scheme.tertiaryContainer
-                : scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(16),
+            color: SampanTheme.brandViolet,
+            borderRadius: BorderRadius.circular(SampanTheme.radiusLg),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
             children: <Widget>[
-              Icon(
-                isAligned
-                    ? Icons.my_location_rounded
-                    : Icons.compass_calibration_rounded,
-                size: 20,
-                color: isAligned
-                    ? scheme.onTertiaryContainer
-                    : scheme.onPrimaryContainer,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  isAligned
-                      ? 'LOCKED ON TARGET (±10°): Walk straight ahead (${GeoMath.formatDistance(distanceMeters)})'
-                      : 'Target: ${target?.displayName ?? 'None'} • Bearing ${(bearingDeg.round() % 360).toString().padLeft(3, '0')}° ($cardinal) • ${GeoMath.formatDistance(distanceMeters)}',
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isAligned
-                        ? scheme.onTertiaryContainer
-                        : scheme.onPrimaryContainer,
+              // Top Companion Pill Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Text(
+                        target?.avatarIcon ?? '⛵',
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        target?.displayName ?? 'Companion',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isAligned
+                          ? SampanTheme.brandLime
+                          : Colors.white.withAlpha(32),
+                      borderRadius:
+                          BorderRadius.circular(SampanTheme.radiusPill),
+                    ),
+                    child: Text(
+                      isAligned ? 'ON TARGET' : '$formattedBearing° $cardinal',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: isAligned
+                            ? SampanTheme.violet900
+                            : SampanTheme.brandLime,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // 3D-Styled Compass Homing Dial with Spring Physics
+              Center(
+                child: SizedBox(
+                  width: 248,
+                  height: 248,
+                  child: _SpringCompassDial(
+                    deviceHeadingDegrees: state.compassHeadingDegrees,
+                    relativeNeedleDegrees: relativeNeedleDeg,
+                    isAlignedWithTarget: isAligned,
+                    userLatitude: state.userLatitude,
+                    userLongitude: state.userLongitude,
+                    peers: state.peers,
+                    selectedPeerId: target?.id,
+                    isHighContrast: state.isSunlightMode,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Expressive Pill Guidance Bar (inspired by M3 Hero Section PLAY pill)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: isAligned
+                      ? SampanTheme.brandLime
+                      : Colors.white.withAlpha(28),
+                  borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(
+                      isAligned
+                          ? Icons.north_rounded
+                          : Icons.explore_rounded,
+                      size: 20,
+                      color: isAligned
+                          ? SampanTheme.violet900
+                          : SampanTheme.brandLime,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isAligned
+                            ? 'Straight ahead · ${GeoMath.formatDistance(distanceMeters)}'
+                            : 'Point toward $cardinal · ${GeoMath.formatDistance(distanceMeters)} away',
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: isAligned
+                              ? SampanTheme.violet900
+                              : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        // Telemetry Metrics Grid
+        // 3. Sculptural 2-Column Stat Cards (inspired by M3 Hero "07:30 AM" tiles)
         Row(
           children: <Widget>[
             Expanded(
-              child: _MetricCard(
-                label: 'BEARING (β)',
-                value:
-                    '${(bearingDeg.round() % 360).toString().padLeft(3, '0')}° ($cardinal)',
-                subtitle:
-                    'Heading α: ${(state.compassHeadingDegrees.round() % 360).toString().padLeft(3, '0')}°',
-                icon: Icons.explore_outlined,
+              child: _SculpturalMetricCard(
+                label: 'DIRECTION',
+                value: '$formattedBearing°',
+                subtitle: '$cardinal · Heading ${state.compassHeadingDegrees.round()}°',
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: _MetricCard(
-                label: 'GREAT-CIRCLE DIST',
+              child: _SculpturalMetricCard(
+                label: 'DISTANCE',
                 value: GeoMath.formatDistance(distanceMeters),
-                subtitle:
-                    'RSSI: ${target?.rssiDbm ?? -60} dBm (${(target?.rssiDbm ?? -60) >= -85 ? 'Healthy' : 'Weak'})',
-                icon: Icons.straighten_rounded,
+                subtitle: (target?.rssiDbm ?? -60) >= -85
+                    ? 'Strong signal'
+                    : 'Weak signal',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        // Compass Heading Calibration & Sensor Fusion Control
+        // 4. Minimal Compass & Safety Leash Controls
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: scheme.outline.withAlpha(110)),
+            color: isDrifted
+                ? scheme.errorContainer
+                : scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(28),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,19 +238,19 @@ class CompassRadarTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      'Magnetometer Heading (α): ${state.compassHeadingDegrees.round()}°',
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  Text(
+                    'Compass angle (${state.compassHeadingDegrees.round()}°)',
+                    style: textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   TextButton.icon(
                     onPressed: controller.refreshHardwareSensors,
-                    icon: const Icon(Icons.sensors, size: 18),
-                    label: const Text('Sync GNSS/BLE'),
+                    icon: const Icon(Icons.my_location_rounded, size: 16),
+                    label: const Text(
+                      'Sync',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                   ),
                 ],
               ),
@@ -202,55 +262,25 @@ class CompassRadarTab extends ConsumerWidget {
                 label: '${state.compassHeadingDegrees.round()}°',
                 onChanged: controller.updateCompassHeading,
               ),
-              Text(
-                'My Offline GNSS: ${state.userLatitude.toStringAsFixed(5)}°N, ${state.userLongitude.toStringAsFixed(5)}°E',
-                style: textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Virtual Leash Safety Monitor Card (Section 4, Module 1)
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: (target?.isLeashFrozen ?? false)
-                ? scheme.errorContainer
-                : scheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: (target?.isLeashFrozen ?? false)
-                  ? scheme.error
-                  : scheme.outline.withAlpha(110),
-              width: (target?.isLeashFrozen ?? false) ? 2.2 : 1.0,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
+              const SizedBox(height: 8),
               Row(
                 children: <Widget>[
                   Icon(
-                    (target?.isLeashFrozen ?? false)
+                    isDrifted
                         ? Icons.warning_amber_rounded
                         : Icons.shield_outlined,
-                    color: (target?.isLeashFrozen ?? false)
-                        ? scheme.error
-                        : scheme.tertiary,
+                    size: 20,
+                    color: isDrifted ? scheme.error : scheme.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      (target?.isLeashFrozen ?? false)
-                          ? 'VIRTUAL LEASH ALARM: ${target?.displayName} Signal Lost!'
-                          : 'Virtual Leash Active (Threshold: -85 dBm / 45s)',
+                      isDrifted
+                          ? '${target?.displayName} drifted out of range'
+                          : 'Safety Leash active',
                       style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: (target?.isLeashFrozen ?? false)
+                        color: isDrifted
                             ? scheme.onErrorContainer
                             : scheme.onSurface,
                       ),
@@ -258,34 +288,35 @@ class CompassRadarTab extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
-                (target?.isLeashFrozen ?? false)
-                    ? 'Beacon RSSI dropped below -85 dBm for > 45s. Last-known GPS coordinates (${targetLat.toStringAsFixed(4)}, ${targetLon.toStringAsFixed(4)}) and bearing (${bearingDeg.round()}°) are frozen on radar.'
-                    : 'Monitors BLE beacon RSSI continuously. Fires haptic/audible alert and freezes last-known GPS bearing if companion drifts out of range.',
+                isDrifted
+                    ? 'Last spot pinned at $formattedBearing° $cardinal.'
+                    : 'Alerts you if ${target?.displayName.split(' ').first ?? 'a friend'} steps too far away.',
                 style: textTheme.bodySmall?.copyWith(
-                  color: (target?.isLeashFrozen ?? false)
+                  color: isDrifted
                       ? scheme.onErrorContainer
                       : scheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: <Widget>[
                   OutlinedButton.icon(
                     key: const ValueKey<String>('simulate-leash-drop-btn'),
-                    onPressed: controller.simulateVirtualLeashDropOnSelectedPeer,
+                    onPressed:
+                        controller.simulateVirtualLeashDropOnSelectedPeer,
                     icon: const Icon(Icons.link_off_rounded, size: 18),
-                    label: const Text('Test Leash Drop (<-85 dBm)'),
+                    label: const Text('Test Drift'),
                   ),
-                  if (target?.isLeashFrozen ?? false)
+                  if (isDrifted)
                     FilledButton.tonalIcon(
                       key: const ValueKey<String>('restore-leash-signal-btn'),
                       onPressed: controller.restoreSelectedPeerSignal,
                       icon: const Icon(Icons.bluetooth_connected, size: 18),
-                      label: const Text('Restore Companion Signal'),
+                      label: const Text('Reconnect'),
                     ),
                 ],
               ),
@@ -368,60 +399,54 @@ class _SpringCompassDialState extends State<_SpringCompassDial> {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
+class _SculpturalMetricCard extends StatelessWidget {
+  const _SculpturalMetricCard({
     required this.label,
     required this.value,
     required this.subtitle,
-    required this.icon,
   });
 
   final String label;
   final String value;
   final String subtitle;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final TextTheme textTheme = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: scheme.outline.withAlpha(110)),
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Icon(icon, size: 16, color: scheme.primary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.primary,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.7,
+              color: scheme.onPrimaryContainer.withAlpha(190),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: textTheme.titleLarge?.copyWith(
+            style: textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w900,
+              color: scheme.onPrimaryContainer,
+              letterSpacing: -0.8,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
+            overflow: TextOverflow.ellipsis,
             style: textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
+              color: scheme.onPrimaryContainer.withAlpha(200),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

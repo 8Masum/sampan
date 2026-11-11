@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sampan/core/constants/landmarks.dart';
+import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/chat/sos_megaphone_modal.dart';
 
-/// Module 2: Offline Caravan Chat & Digital Megaphone (SOS)
-/// (Section 4, Module 2 of `SAMPAN_BLUEPRINT.md`).
+/// Module 2: Minimalist Material Design 3 Expressive Caravan Chat & SOS.
 class CaravanChatTab extends ConsumerStatefulWidget {
   const CaravanChatTab({super.key});
 
@@ -61,15 +61,9 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
 
     return Column(
       children: <Widget>[
-        // 1. Concentric Rings Selector (Caravan Group Ring vs 1-to-1 DMs)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            border: Border(
-              bottom: BorderSide(color: scheme.outline.withAlpha(70)),
-            ),
-          ),
+        // 1. Minimal Conversation Scope Pills
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -79,10 +73,7 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                   selected: activeDmPeer == null,
                   onSelected: (_) => controller.setActiveDmPeer(null),
                   avatar: const Icon(Icons.groups_rounded, size: 18),
-                  label: const Text(
-                    'Caravan Group Ring (E2EE)',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
+                  label: const Text('Everyone'),
                 ),
                 const SizedBox(width: 8),
                 ...state.peers.map((PeerModel peer) {
@@ -94,10 +85,7 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                       selected: isSelected,
                       onSelected: (_) => controller.setActiveDmPeer(peer.id),
                       avatar: Text(peer.avatarIcon),
-                      label: Text(
-                        'DM: ${peer.displayName}',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
+                      label: Text(peer.displayName.split(' ').first),
                     ),
                   );
                 }),
@@ -106,15 +94,9 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
           ),
         ),
 
-        // 2. Offline Landmark Ping Chips + Digital Megaphone Trigger
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer.withAlpha(80),
-            border: Border(
-              bottom: BorderSide(color: scheme.outline.withAlpha(70)),
-            ),
-          ),
+        // 2. Quick SOS Pill + One-Tap Spot Check-Ins
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Row(
             children: <Widget>[
               FilledButton.icon(
@@ -123,11 +105,15 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                 style: FilledButton.styleFrom(
                   backgroundColor: scheme.error,
                   foregroundColor: scheme.onError,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.campaign_rounded, size: 18),
                 label: const Text(
-                  'SOS Megaphone',
+                  'SOS',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
@@ -163,16 +149,16 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
           ),
         ),
 
-        // 3. Message Stream
+        // 3. Expressive Pill Message Stream (inspired by M3 Hero Chat Screen)
         Expanded(
           child: visibleMessages.isEmpty
               ? Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(32),
                     child: Text(
                       activeDmPeer == null
-                          ? 'No Caravan messages yet. Send an offline message or tap a Landmark Ping chip above!'
-                          : 'Start a direct encrypted 1-to-1 conversation with ${activeDmPeer.displayName}.',
+                          ? 'Say hello or tap a spot above to check in.'
+                          : 'Private offline chat with ${activeDmPeer.displayName.split(' ').first}.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodyMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
@@ -181,7 +167,10 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: visibleMessages.length,
                   itemBuilder: (BuildContext context, int index) {
                     final MessageModel msg = visibleMessages[index];
@@ -195,15 +184,9 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                 ),
         ),
 
-        // 4. Offline Message Composer
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            border: Border(
-              top: BorderSide(color: scheme.outline.withAlpha(80)),
-            ),
-          ),
+        // 4. Floating Pill Composer
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
           child: Row(
             children: <Widget>[
               Expanded(
@@ -213,24 +196,36 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                   onSubmitted: (_) => _send(),
                   decoration: InputDecoration(
                     hintText: activeDmPeer == null
-                        ? 'Broadcast to Caravan (ChaCha20 E2EE)...'
-                        : 'Encrypted DM to ${activeDmPeer.displayName}...',
+                        ? 'Message everyone...'
+                        : 'Message ${activeDmPeer.displayName.split(' ').first}...',
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                      horizontal: 20,
+                      vertical: 14,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius:
+                          BorderRadius.circular(SampanTheme.radiusPill),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(SampanTheme.radiusPill),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               IconButton.filled(
                 key: const ValueKey<String>('send-chat-message-btn'),
                 onPressed: _send,
-                icon: const Icon(Icons.send_rounded),
-                tooltip: 'Send offline P2P packet',
+                style: IconButton.styleFrom(
+                  backgroundColor: SampanTheme.brandViolet,
+                  foregroundColor: SampanTheme.brandLime,
+                  fixedSize: const Size(48, 48),
+                ),
+                icon: const Icon(Icons.arrow_upward_rounded),
+                tooltip: 'Send',
               ),
             ],
           ),
@@ -259,23 +254,22 @@ class _MessageBubble extends StatelessWidget {
 
     if (message.isSos) {
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: scheme.errorContainer,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: scheme.error, width: 2.2),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(Icons.warning_rounded, color: scheme.error, size: 20),
+                Icon(Icons.warning_rounded, color: scheme.error, size: 18),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'DIGITAL MEGAPHONE BROADCAST • $timeStr',
+                    'SOS · ${message.senderName} · $timeStr',
                     style: textTheme.labelSmall?.copyWith(
                       color: scheme.onErrorContainer,
                       fontWeight: FontWeight.w900,
@@ -297,65 +291,44 @@ class _MessageBubble extends StatelessWidget {
       );
     }
 
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? scheme.primary : scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Flexible(
-                  child: Text(
-                    '${message.senderName} (${message.senderRole == 'guide' ? 'Guide' : 'Traveler'})',
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isMe
-                          ? scheme.primaryContainer
-                          : scheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  timeStr,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: isMe
-                        ? scheme.onPrimary.withAlpha(200)
-                        : scheme.onPrimaryContainer.withAlpha(180),
-                  ),
-                ),
-                if (message.isEncrypted) ...<Widget>[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 12,
-                    color: isMe
-                        ? scheme.primaryContainer
-                        : scheme.onPrimaryContainer,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              message.content,
-              style: textTheme.bodyMedium?.copyWith(
-                color: isMe ? scheme.onPrimary : scheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Column(
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            child: Text(
+              '${isMe ? 'You' : message.senderName.split(' ').first} · $timeStr',
+              style: textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
-        ),
+          ),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 310),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: isMe ? SampanTheme.brandViolet : scheme.primaryContainer,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isMe ? 24 : 8),
+                topRight: Radius.circular(isMe ? 8 : 24),
+                bottomLeft: const Radius.circular(24),
+                bottomRight: const Radius.circular(24),
+              ),
+            ),
+            child: Text(
+              message.content,
+              style: textTheme.bodyMedium?.copyWith(
+                color: isMe ? Colors.white : scheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

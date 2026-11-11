@@ -537,8 +537,7 @@ class SampanController extends StateNotifier<SampanAppState> {
       senderName: sender?.displayName ?? 'Local Traveler',
       senderRole: sender?.role ?? 'traveler',
       recipientId: state.activeDmPeerId,
-      content:
-          '${landmark.icon} Landmark Ping: At ${landmark.name} (${landmark.bengaliName}) [$coords] — ${landmark.description}',
+      content: '${landmark.icon} Landmark Ping: At ${landmark.name} ($coords)',
       type: 'gps_ping',
       latitude: landmark.latitude,
       longitude: landmark.longitude,

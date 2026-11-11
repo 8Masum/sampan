@@ -2,10 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:sampan/core/math/geo_math.dart';
+import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/models/peer_model.dart';
 
-/// Custom 60/120 FPS canvas painter for Sampan's 3D-styled Compass Homing Dial
-/// (Section 2.2 & Section 4, Module 1 of `SAMPAN_BLUEPRINT.md`).
+/// Custom 60/120 FPS canvas painter for Sampan's Material 3 Expressive
+/// Compass Homing Dial (`#6755EF` Electric Violet & `#F4FF90` Acid Lime).
 class CompassDialPainter extends CustomPainter {
   CompassDialPainter({
     required this.deviceHeadingDegrees,
@@ -30,65 +31,63 @@ class CompassDialPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Offset center = Offset(size.width / 2, size.height / 2);
-    final double radius = math.min(size.width, size.height) / 2 - 8;
+    final double radius = math.min(size.width, size.height) / 2 - 4;
 
-    // 1. 3D Outer Bezel & Maritime Dial Surface
+    // 1. Sculptural Outer Ring & Deep Violet Dial Surface
     final Paint bezelPaint = Paint()
-      ..color = isHighContrast
-          ? Colors.black
-          : const Color(0xFF002D34)
+      ..color = isHighContrast ? Colors.black : const Color(0xFF1B1145)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, bezelPaint);
 
     final Paint innerSurfacePaint = Paint()
       ..color = isHighContrast
-          ? const Color(0xFF0A1417)
-          : const Color(0xFF003B46)
+          ? const Color(0xFF0B0719)
+          : const Color(0xFF241759)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius - 8, innerSurfacePaint);
 
-    // 2. Concentric Radar Range Rings (35%, 65%, 92% radius)
+    // 2. Minimal Concentric Range Rings
     final Paint ringPaint = Paint()
       ..color = isHighContrast
-          ? Colors.white.withAlpha(160)
-          : const Color(0xFFA1EFFF).withAlpha(65)
+          ? Colors.white.withAlpha(150)
+          : const Color(0xFFB9AEFF).withAlpha(55)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isHighContrast ? 1.8 : 1.2;
+      ..strokeWidth = isHighContrast ? 1.6 : 1.2;
 
-    for (final double factor in <double>[0.33, 0.63, 0.90]) {
+    for (final double factor in <double>[0.36, 0.68, 0.92]) {
       canvas.drawCircle(center, (radius - 10) * factor, ringPaint);
     }
 
-    // Crosshairs
+    // Subtle Crosshairs
     canvas.drawLine(
-      Offset(center.dx - (radius - 18), center.dy),
-      Offset(center.dx + (radius - 18), center.dy),
+      Offset(center.dx - (radius - 22), center.dy),
+      Offset(center.dx + (radius - 22), center.dy),
       ringPaint,
     );
     canvas.drawLine(
-      Offset(center.dx, center.dy - (radius - 18)),
-      Offset(center.dx, center.dy + (radius - 18)),
+      Offset(center.dx, center.dy - (radius - 22)),
+      Offset(center.dx, center.dy + (radius - 22)),
       ringPaint,
     );
 
-    // 3. Rotating Compass Rose (rotates opposite to deviceHeadingDegrees)
+    // 3. Rotating Compass Rose
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(-GeoMath.degToRad(deviceHeadingDegrees));
 
     final Paint tickPaint = Paint()
-      ..color = Colors.white.withAlpha(180)
-      ..strokeWidth = 1.5;
+      ..color = Colors.white.withAlpha(170)
+      ..strokeCap = StrokeCap.round;
 
     for (int deg = 0; deg < 360; deg += 15) {
       final double angleRad = GeoMath.degToRad(deg.toDouble()) - (math.pi / 2);
       final bool isCardinal = deg % 90 == 0;
       final double outerR = radius - 12;
-      final double innerR = outerR - (isCardinal ? 12 : 6);
+      final double innerR = outerR - (isCardinal ? 11 : 5);
       canvas.drawLine(
         Offset(math.cos(angleRad) * innerR, math.sin(angleRad) * innerR),
         Offset(math.cos(angleRad) * outerR, math.sin(angleRad) * outerR),
-        tickPaint..strokeWidth = isCardinal ? 2.5 : 1.2,
+        tickPaint..strokeWidth = isCardinal ? 2.4 : 1.2,
       );
     }
 
@@ -100,7 +99,7 @@ class CompassDialPainter extends CustomPainter {
       'W': math.pi,
     };
     cardinals.forEach((String label, double angleRad) {
-      final double labelR = radius - 34;
+      final double labelR = radius - 33;
       final Offset pos = Offset(
         math.cos(angleRad) * labelR,
         math.sin(angleRad) * labelR,
@@ -110,8 +109,8 @@ class CompassDialPainter extends CustomPainter {
           text: label,
           style: TextStyle(
             color: label == 'N'
-                ? const Color(0xFFF4A261)
-                : Colors.white,
+                ? SampanTheme.brandLime
+                : Colors.white.withAlpha(220),
             fontSize: 13,
             fontWeight: FontWeight.w900,
           ),
@@ -142,8 +141,7 @@ class CompassDialPainter extends CustomPainter {
         endLon: peer.lastLongitude!,
       );
 
-      // Normalize distance onto radar radius (0..200m mapped to 22%..78% radius)
-      final double normDist = (distMeters / 200.0).clamp(0.18, 0.78);
+      final double normDist = (distMeters / 200.0).clamp(0.20, 0.76);
       final double blipR = (radius - 16) * normDist;
       final double rad = GeoMath.degToRad(relAngle) - (math.pi / 2);
       final Offset blipCenter = Offset(
@@ -154,15 +152,13 @@ class CompassDialPainter extends CustomPainter {
       final bool isSelected = peer.id == selectedPeerId;
       final Color blipColor = peer.isLeashFrozen
           ? const Color(0xFFFF5449)
-          : (peer.isGuide
-              ? const Color(0xFFF4A261)
-              : const Color(0xFF2A9D8F));
+          : (isSelected ? SampanTheme.brandLime : const Color(0xFFC8B9FF));
 
       if (isSelected) {
         canvas.drawCircle(
           blipCenter,
-          13,
-          Paint()..color = blipColor.withAlpha(85),
+          14,
+          Paint()..color = blipColor.withAlpha(75),
         );
       }
       canvas.drawCircle(
@@ -174,26 +170,26 @@ class CompassDialPainter extends CustomPainter {
         blipCenter,
         isSelected ? 7.5 : 5.5,
         Paint()
-          ..color = Colors.white
+          ..color = const Color(0xFF1B1145)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.8,
+          ..strokeWidth = 2.0,
       );
     }
 
-    // 5. Homing Needle pointing to Selected Companion (Relative Needle Angle)
+    // 5. Homing Needle pointing to Selected Companion
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(GeoMath.degToRad(targetNeedleDegrees));
 
     final Color needleColor = isAlignedWithTarget
-        ? const Color(0xFF2A9D8F)
-        : const Color(0xFFF4A261);
+        ? SampanTheme.brandLime
+        : const Color(0xFFDCE868);
 
     final Path needlePath = Path()
       ..moveTo(0, -(radius - 38))
-      ..lineTo(10, -8)
+      ..lineTo(11, -8)
       ..lineTo(0, -18)
-      ..lineTo(-10, -8)
+      ..lineTo(-11, -8)
       ..close();
 
     canvas.drawPath(
@@ -207,13 +203,13 @@ class CompassDialPainter extends CustomPainter {
     // 6. Center Hub Cap
     canvas.drawCircle(
       center,
-      12,
-      Paint()..color = const Color(0xFFA1EFFF),
+      13,
+      Paint()..color = SampanTheme.brandViolet,
     );
     canvas.drawCircle(
       center,
-      5,
-      Paint()..color = const Color(0xFF002D34),
+      5.5,
+      Paint()..color = SampanTheme.brandLime,
     );
   }
 

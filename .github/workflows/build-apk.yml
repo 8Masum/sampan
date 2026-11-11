@@ -61,10 +61,16 @@ jobs:
           rm -rf android ios
           flutter create --org com.themasum --project-name sampan --platforms android,ios .
           rm -f test/widget_test.dart
-          git checkout -- lib test pubspec.yaml analysis_options.yaml README.md
+          git checkout -- lib test pubspec.yaml analysis_options.yaml README.md Logo
           mkdir -p android/app/src/main/kotlin/com/themasum/sampan
           cp /tmp/sampan-native/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/sampan-native/MainActivity.kt android/app/src/main/kotlin/com/themasum/sampan/MainActivity.kt
+          for dir in android/app/src/main/res/mipmap-*; do
+            if [ -d "$dir" ] && [[ "$dir" != *anydpi* ]]; then
+              cp Logo/Sampan.png "$dir/ic_launcher.png"
+            fi
+          done
+          rm -rf android/app/src/main/res/mipmap-anydpi*
 
       - name: Install Flutter dependencies
         run: flutter pub get

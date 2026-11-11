@@ -8,8 +8,9 @@ class SampanConstants {
 
   static const String appName = 'Sampan';
   static const String appNameBengali = 'সাম্পান';
-  static const String tagline = 'Navigating crowds, tides, and trails together.';
-  static const String appVersion = '1.0.0';
+  static const String tagline = 'Find your people, even offline.';
+  static const String appVersion = '2.0.0';
+  static const String logoAssetPath = 'Logo/Sampan.png';
 
   /// GitHub Release OTA Auto-Update Endpoints.
   static const String githubOwner = 'themasum-com';
@@ -66,11 +67,11 @@ class SampanConstants {
   ];
 
   static const List<int> identityColorHexes = <int>[
-    0xFF006877, // Ocean Deep
-    0xFFE08244, // Sunset Amber
-    0xFF2A9D8F, // Seafoam Green
-    0xFFE63946, // Coral Red
-    0xFF457B9D, // Tidal Blue
-    0xFF8E5572, // Twilight Plum
+    0xFF6755EF, // Electric Violet (Brand Primary)
+    0xFF4F3CD6, // Deep Iris
+    0xFFE84A8A, // Expressive Berry Rose
+    0xFF00A896, // Mint Teal
+    0xFF3A86FF, // Sky Cobalt
+    0xFF8338EC, // Vivid Orchid
   ];
 }

@@ -1,154 +1,179 @@
 import 'package:flutter/material.dart';
 
-/// Visual presentation mode for Sampan (Section 2.1 & 2.2).
+/// Visual presentation mode for Sampan.
 enum SampanVisualMode {
-  /// Default warm beach sand light mode (`#FAF8F5`).
+  /// Default airy lavender & electric violet Material 3 Expressive light mode.
   light,
 
-  /// Deep maritime night mode (`#0F1416`).
+  /// Deep cosmic violet Material 3 Expressive dark mode.
   dark,
 
   /// One-tap Sunlight High-Contrast mode (`> 7:1` contrast ratio & bold font
-  /// weights) for reading under direct tropical sunlight.
+  /// weights) for reading under direct outdoor sunlight.
   sunlightHighContrast,
 }
 
-/// Coastal Maritime Color Palette & Playful Material Design 3 Theme
-/// (Section 2 of `SAMPAN_BLUEPRINT.md`).
+/// Material Design 3 Expressive Token System (`ui-ux-pro-max` Three-Layer
+/// Architecture: Primitive → Semantic → Component).
+///
+/// Built around the official Sampan brand palette:
+/// - Electric Violet (`#6755EF`)
+/// - Acid Lime / Chartreuse (`#F4FF90`)
+/// - Soft Lavender Containers (`#DDD4FF` / `#EFEAFF` / `#F7F5FF`)
 class SampanTheme {
   const SampanTheme._();
 
-  // Section 2.1 Token Roles
-  static const Color oceanDeepLight = Color(0xFF004D5A);
-  static const Color oceanDeepDark = Color(0xFF006877);
-  static const Color primaryContainerLight = Color(0xFFA1EFFF);
-  static const Color primaryContainerDark = Color(0xFF002D34);
+  // ===========================================================================
+  // Layer 1: Primitive Tokens (Raw Brand & Palette Values)
+  // ===========================================================================
+  static const Color brandViolet = Color(0xFF6755EF);
+  static const Color brandLime = Color(0xFFF4FF90);
 
-  static const Color sunsetAmberLight = Color(0xFFE08244);
-  static const Color sunsetAmberDark = Color(0xFFF4A261);
+  static const Color violet700 = Color(0xFF4F3CD6);
+  static const Color violet300 = Color(0xFFB9AEFF);
+  static const Color violet900 = Color(0xFF1B1145);
+  static const Color violet950 = Color(0xFF0E0A1F);
 
-  static const Color seafoamGreen = Color(0xFF2A9D8F);
+  static const Color lavender50 = Color(0xFFF7F5FF);
+  static const Color lavender100 = Color(0xFFEFEAFF);
+  static const Color lavender200 = Color(0xFFDDD4FF);
+  static const Color lavender300 = Color(0xFFC8B9FF);
 
-  static const Color sandyDuneLight = Color(0xFFFAF8F5);
-  static const Color sandyDuneDark = Color(0xFF0F1416);
+  static const Color darkSurfaceCard = Color(0xFF1A1433);
+  static const Color darkSurfaceHigh = Color(0xFF261E4A);
 
-  static const Color lifeguardRedLight = Color(0xFFBA1A1A);
-  static const Color lifeguardRedDark = Color(0xFFFF5449);
+  static const Color limeInk = Color(0xFF1F2400);
+  static const Color limeContainerLight = Color(0xFFF4FF90);
+  static const Color limeContainerDark = Color(0xFFDCE868);
+
+  static const Color alertRedLight = Color(0xFFBA1A1A);
+  static const Color alertRedDark = Color(0xFFFF5449);
+
+  // ===========================================================================
+  // Layer 2: Semantic Spacing & Shape Tokens (Material Design 3 Expressive)
+  // ===========================================================================
+  static const double spaceXs = 6.0;
+  static const double spaceSm = 10.0;
+  static const double spaceMd = 16.0;
+  static const double spaceLg = 24.0;
+  static const double spaceXl = 32.0;
+
+  static const double radiusSm = 16.0;
+  static const double radiusMd = 24.0;
+  static const double radiusLg = 32.0;
+  static const double radiusPill = 999.0;
+
+  // Backward-compatible semantic aliases
+  static const Color oceanDeepLight = brandViolet;
+  static const Color oceanDeepDark = violet700;
+  static const Color primaryContainerLight = lavender200;
+  static const Color primaryContainerDark = darkSurfaceHigh;
+  static const Color sunsetAmberLight = brandLime;
+  static const Color sunsetAmberDark = brandLime;
+  static const Color seafoamGreen = Color(0xFF00A896);
+  static const Color sandyDuneLight = lavender50;
+  static const Color sandyDuneDark = violet950;
+  static const Color lifeguardRedLight = alertRedLight;
+  static const Color lifeguardRedDark = alertRedDark;
 
   static ThemeData buildTheme(SampanVisualMode mode) {
     return switch (mode) {
       SampanVisualMode.light => _buildLightTheme(),
       SampanVisualMode.dark => _buildDarkTheme(),
-      SampanVisualMode.sunlightHighContrast => _buildSunlightHighContrastTheme(),
+      SampanVisualMode.sunlightHighContrast =>
+        _buildSunlightHighContrastTheme(),
     };
   }
 
+  // ===========================================================================
+  // Layer 3: Component Themes (Light, Dark & Sunlight High-Contrast)
+  // ===========================================================================
   static ThemeData _buildLightTheme() {
     const ColorScheme scheme = ColorScheme(
       brightness: Brightness.light,
-      primary: oceanDeepLight,
+      primary: brandViolet,
       onPrimary: Colors.white,
-      primaryContainer: primaryContainerLight,
-      onPrimaryContainer: Color(0xFF001F25),
-      secondary: sunsetAmberLight,
+      primaryContainer: lavender200,
+      onPrimaryContainer: violet900,
+      secondary: violet700,
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFFFDCC6),
-      onSecondaryContainer: Color(0xFF301400),
-      tertiary: seafoamGreen,
-      onTertiary: Colors.white,
-      tertiaryContainer: Color(0xFFB4F1E8),
-      onTertiaryContainer: Color(0xFF00201C),
-      error: lifeguardRedLight,
+      secondaryContainer: brandLime,
+      onSecondaryContainer: limeInk,
+      tertiary: limeInk,
+      onTertiary: brandLime,
+      tertiaryContainer: brandLime,
+      onTertiaryContainer: limeInk,
+      error: alertRedLight,
       onError: Colors.white,
       errorContainer: Color(0xFFFFDAD6),
       onErrorContainer: Color(0xFF410002),
-      surface: sandyDuneLight,
-      onSurface: Color(0xFF171C1E),
-      onSurfaceVariant: Color(0xFF3F484B),
-      outline: Color(0xFF6F797B),
+      surface: lavender50,
+      onSurface: violet900,
+      surfaceContainerHighest: lavender100,
+      onSurfaceVariant: Color(0xFF564C7A),
+      outline: Color(0xFFB5A9E0),
+      outlineVariant: Color(0xFFE2DCFA),
     );
 
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: sandyDuneLight,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: sandyDuneLight,
-        foregroundColor: oceanDeepLight,
-        elevation: 0,
-        centerTitle: false,
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: sandyDuneLight,
-        showDragHandle: true,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-      ),
+    return _applyComponentTokens(
+      scheme: scheme,
+      scaffoldBg: lavender50,
+      cardBg: lavender100,
+      sheetBg: lavender50,
+      navIndicator: lavender200,
     );
   }
 
   static ThemeData _buildDarkTheme() {
     const ColorScheme scheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: primaryContainerLight,
-      onPrimary: primaryContainerDark,
-      primaryContainer: oceanDeepDark,
-      onPrimaryContainer: primaryContainerLight,
-      secondary: sunsetAmberDark,
-      onSecondary: Color(0xFF4C2600),
-      secondaryContainer: Color(0xFF6C3A0D),
-      onSecondaryContainer: Color(0xFFFFDCC6),
-      tertiary: Color(0xFF56D6C7),
-      onTertiary: Color(0xFF003731),
-      tertiaryContainer: seafoamGreen,
-      onTertiaryContainer: Color(0xFFB4F1E8),
-      error: lifeguardRedDark,
+      primary: brandViolet,
+      onPrimary: Colors.white,
+      primaryContainer: darkSurfaceHigh,
+      onPrimaryContainer: lavender200,
+      secondary: brandLime,
+      onSecondary: limeInk,
+      secondaryContainer: Color(0xFF332966),
+      onSecondaryContainer: brandLime,
+      tertiary: brandLime,
+      onTertiary: limeInk,
+      tertiaryContainer: brandLime,
+      onTertiaryContainer: limeInk,
+      error: alertRedDark,
       onError: Color(0xFF690005),
       errorContainer: Color(0xFF93000A),
       onErrorContainer: Color(0xFFFFDAD6),
-      surface: sandyDuneDark,
-      onSurface: Color(0xFFE1E3E4),
-      onSurfaceVariant: Color(0xFFBFC8CB),
-      outline: Color(0xFF899295),
+      surface: violet950,
+      onSurface: Color(0xFFF3F0FF),
+      surfaceContainerHighest: darkSurfaceCard,
+      onSurfaceVariant: Color(0xFFBDB3E6),
+      outline: Color(0xFF4B3F78),
+      outlineVariant: Color(0xFF2B224D),
     );
 
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: sandyDuneDark,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: sandyDuneDark,
-        foregroundColor: primaryContainerLight,
-        elevation: 0,
-        centerTitle: false,
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Color(0xFF182125),
-        showDragHandle: true,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-      ),
+    return _applyComponentTokens(
+      scheme: scheme,
+      scaffoldBg: violet950,
+      cardBg: darkSurfaceCard,
+      sheetBg: darkSurfaceCard,
+      navIndicator: darkSurfaceHigh,
     );
   }
 
-  /// High-contrast outdoor beach mode (>7:1 WCAG AAA contrast ratio + bold weights)
-  /// for direct tropical sunlight (Section 2.2).
   static ThemeData _buildSunlightHighContrastTheme() {
     const ColorScheme scheme = ColorScheme(
       brightness: Brightness.light,
-      primary: Color(0xFF002B33),
+      primary: Color(0xFF28157A),
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFF004D5A),
-      onPrimaryContainer: Colors.white,
-      secondary: Color(0xFF8C3B00),
-      onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFFFE082),
+      primaryContainer: brandLime,
+      onPrimaryContainer: Colors.black,
+      secondary: Colors.black,
+      onSecondary: brandLime,
+      secondaryContainer: brandLime,
       onSecondaryContainer: Colors.black,
-      tertiary: Color(0xFF004D40),
-      onTertiary: Colors.white,
-      tertiaryContainer: Color(0xFF80CBC4),
+      tertiary: Colors.black,
+      onTertiary: brandLime,
+      tertiaryContainer: brandLime,
       onTertiaryContainer: Colors.black,
       error: Color(0xFF990000),
       onError: Colors.white,
@@ -156,8 +181,10 @@ class SampanTheme {
       onErrorContainer: Colors.black,
       surface: Colors.white,
       onSurface: Colors.black,
+      surfaceContainerHighest: Color(0xFFF0EEFF),
       onSurfaceVariant: Colors.black,
       outline: Colors.black,
+      outlineVariant: Colors.black,
     );
 
     final TextTheme boldText = Typography.blackMountainView.apply(
@@ -165,10 +192,15 @@ class SampanTheme {
       displayColor: Colors.black,
     );
 
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: Colors.white,
+    final ThemeData base = _applyComponentTokens(
+      scheme: scheme,
+      scaffoldBg: Colors.white,
+      cardBg: const Color(0xFFF2EFFF),
+      sheetBg: Colors.white,
+      navIndicator: brandLime,
+    );
+
+    return base.copyWith(
       textTheme: boldText.copyWith(
         bodyLarge: const TextStyle(
           color: Colors.black,
@@ -188,21 +220,125 @@ class SampanTheme {
         titleLarge: const TextStyle(
           color: Colors.black,
           fontWeight: FontWeight.w900,
-          fontSize: 21,
+          fontSize: 22,
         ),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+    );
+  }
+
+  static ThemeData _applyComponentTokens({
+    required ColorScheme scheme,
+    required Color scaffoldBg,
+    required Color cardBg,
+    required Color sheetBg,
+    required Color navIndicator,
+  }) {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: scaffoldBg,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scaffoldBg,
+        foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
+        titleSpacing: spaceMd,
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Colors.white,
-        showDragHandle: true,
+      cardTheme: CardThemeData(
+        color: cardBg,
+        elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          side: BorderSide(color: Colors.black, width: 2.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: sheetBg,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scaffoldBg,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: navIndicator,
+        height: 70,
+        elevation: 0,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+          Set<WidgetState> states,
+        ) {
+          final bool selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+          );
+        }),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: cardBg,
+        selectedColor: scheme.primary,
+        secondarySelectedColor: scheme.primary,
+        side: BorderSide.none,
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        labelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: scheme.onSurface,
+        ),
+        secondaryLabelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: scheme.onPrimary,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: const StadiumBorder(),
+          side: BorderSide(color: scheme.outline),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cardBg,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
     );

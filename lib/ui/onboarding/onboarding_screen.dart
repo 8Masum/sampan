@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sampan/core/constants/protocol_constants.dart';
+import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/state/sampan_providers.dart';
 
-/// Zero-Cloud Onboarding Flow (Under 10 Seconds) — Section 5.1 of
-/// `SAMPAN_BLUEPRINT.md`.
+/// Minimalist Material Design 3 Expressive Onboarding Flow.
 ///
-/// Generates an on-device Ed25519 public/private keypair with zero phone
-/// number, email, password, or SMS registration.
+/// Generates an on-device cryptographic identity in one tap with zero accounts,
+/// zero cloud servers, and zero friction.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -54,227 +54,283 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              // Header Banner
+              // M3 Expressive Hero Card (Electric Violet #6755EF + Acid Lime #F4FF90)
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
                 decoration: BoxDecoration(
-                  color: scheme.primary,
-                  borderRadius: BorderRadius.circular(24),
+                  color: SampanTheme.brandViolet,
+                  borderRadius: BorderRadius.circular(SampanTheme.radiusLg),
                 ),
                 child: Column(
                   children: <Widget>[
-                    Text(
-                      _selectedAvatar,
-                      style: const TextStyle(fontSize: 44),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'WELCOME TO SAMPAN (সাম্পান)',
-                      textAlign: TextAlign.center,
-                      style: textTheme.titleLarge?.copyWith(
-                        color: scheme.onPrimary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.6,
+                    // Pill Tag
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: SampanTheme.brandLime,
+                        borderRadius:
+                            BorderRadius.circular(SampanTheme.radiusPill),
+                      ),
+                      child: Text(
+                        'WELCOME TO SAMPAN',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: SampanTheme.violet900,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 20),
+
+                    // Official Brand Logo (used directly as-is, no crop or edit)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        SampanConstants.logoAssetPath,
+                        width: 116,
+                        height: 116,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (
+                          BuildContext context,
+                          Object error,
+                          StackTrace? stackTrace,
+                        ) {
+                          return Text(
+                            _selectedAvatar,
+                            style: const TextStyle(fontSize: 52),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Text(
+                      'No signal?\nStay together.',
+                      textAlign: TextAlign.center,
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: SampanTheme.brandLime,
+                        fontWeight: FontWeight.w900,
+                        height: 1.12,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       SampanConstants.tagline,
                       textAlign: TextAlign.center,
                       style: textTheme.bodyMedium?.copyWith(
-                        color: scheme.primaryContainer,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '100% Offline • Zero-Cloud • Ed25519 Identity',
-                        style: textTheme.labelSmall?.copyWith(
-                          color: scheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        color: Colors.white.withAlpha(225),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // 1. Pick Avatar Icon
-              Text(
-                '1. Pick Avatar Icon',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
+              // Identity Customization Card (Soft Lavender Surface)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(28),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: SampanConstants.avatarIcons.map((String icon) {
-                  final bool isSelected = icon == _selectedAvatar;
-                  return InkWell(
-                    key: ValueKey<String>('avatar-$icon'),
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => setState(() => _selectedAvatar = icon),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: 54,
-                      height: 54,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? scheme.primaryContainer
-                            : scheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? scheme.primary : scheme.outline,
-                          width: isSelected ? 2.5 : 1.0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Your name',
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const ValueKey<String>('onboarding-display-name'),
+                      controller: _nameController,
+                      maxLength: 32,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Tanvir Ahmed',
+                        counterText: '',
+                        fillColor: scheme.surface,
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            _selectedAvatar,
+                            style: const TextStyle(fontSize: 20),
+                          ),
                         ),
                       ),
-                      child: Text(icon, style: const TextStyle(fontSize: 26)),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-              // 2. Choose Identity Color
-              Text(
-                '2. Choose Identity Color',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: SampanConstants.identityColorHexes.map((int hex) {
-                  final bool isSelected = hex == _selectedColorHex;
-                  return GestureDetector(
-                    key: ValueKey<String>('color-${hex.toRadixString(16)}'),
-                    onTap: () => setState(() => _selectedColorHex = hex),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Color(hex),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? scheme.onSurface : Colors.white,
-                          width: isSelected ? 3.5 : 1.5,
-                        ),
+                    Text(
+                      'Your role',
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurfaceVariant,
                       ),
-                      child: isSelected
-                          ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 20,
-                            )
-                          : null,
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _RoleOptionCard(
+                            key: const ValueKey<String>('role-guide'),
+                            title: 'Guide',
+                            subtitle: 'Lead the trip',
+                            icon: Icons.explore_rounded,
+                            isSelected: _selectedRole == 'guide',
+                            onTap: () =>
+                                setState(() => _selectedRole = 'guide'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _RoleOptionCard(
+                            key: const ValueKey<String>('role-traveler'),
+                            title: 'Traveler',
+                            subtitle: 'Follow along',
+                            icon: Icons.hiking_rounded,
+                            isSelected: _selectedRole == 'traveler',
+                            onTap: () =>
+                                setState(() => _selectedRole = 'traveler'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
-              // 3. Display Name
-              Text(
-                '3. Display Name',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                key: const ValueKey<String>('onboarding-display-name'),
-                controller: _nameController,
-                maxLength: 32,
-                decoration: InputDecoration(
-                  hintText: 'e.g., Tanvir Ahmed',
-                  prefixIcon: const Icon(Icons.badge_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 4. Role Selection
-              Text(
-                '4. My Caravan Role',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _RoleOptionCard(
-                      key: const ValueKey<String>('role-guide'),
-                      title: 'Tour Guide / Host',
-                      subtitle: 'Leads caravan & hosts SoftAP Hub',
-                      icon: Icons.explore,
-                      isSelected: _selectedRole == 'guide',
-                      onTap: () => setState(() => _selectedRole = 'guide'),
+                    Text(
+                      'Pick a vibe',
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _RoleOptionCard(
-                      key: const ValueKey<String>('role-traveler'),
-                      title: 'Traveler / Guest',
-                      subtitle: 'Tracks guide & joins caravan mesh',
-                      icon: Icons.hiking,
-                      isSelected: _selectedRole == 'traveler',
-                      onTap: () => setState(() => _selectedRole = 'traveler'),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: SampanConstants.avatarIcons.map((String icon) {
+                          final bool isSelected = icon == _selectedAvatar;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: InkWell(
+                              key: ValueKey<String>('avatar-$icon'),
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () =>
+                                  setState(() => _selectedAvatar = icon),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: 50,
+                                height: 50,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? SampanTheme.brandViolet
+                                      : scheme.surface,
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Text(
+                                  icon,
+                                  style: const TextStyle(fontSize: 24),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: SampanConstants.identityColorHexes.map((
+                        int hex,
+                      ) {
+                        final bool isSelected = hex == _selectedColorHex;
+                        return GestureDetector(
+                          key: ValueKey<String>(
+                            'color-${hex.toRadixString(16)}',
+                          ),
+                          onTap: () => setState(() => _selectedColorHex = hex),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Color(hex),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? SampanTheme.brandLime
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
+                                : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
 
-              // Create Offline Identity CTA
-              FilledButton.icon(
+              // Expressive Pill CTA (Acid Lime #F4FF90 + Deep Violet #1B1145)
+              FilledButton(
                 key: const ValueKey<String>('create-offline-identity-btn'),
                 onPressed: _isGenerating ? null : _handleCreateIdentity,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  backgroundColor: SampanTheme.brandLime,
+                  foregroundColor: SampanTheme.violet900,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: const StadiumBorder(),
                 ),
-                icon: const Icon(Icons.vpn_key_rounded),
-                label: Text(
-                  _isGenerating
-                      ? 'Generating Ed25519 Keypair...'
-                      : 'Create Offline Identity',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      _isGenerating ? 'Setting up...' : 'Start Offline',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, size: 20),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
-                'Zero phone number, email, or cloud servers. Your Ed25519 cryptographic identity stays 100% on your device.',
+                'No account needed · Works 100% offline',
                 textAlign: TextAlign.center,
                 style: textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -305,46 +361,55 @@ class _RoleOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? scheme.secondaryContainer : scheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? scheme.secondary : scheme.outline,
-            width: isSelected ? 2.5 : 1.0,
-          ),
+          color: isSelected ? SampanTheme.brandViolet : scheme.surface,
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: <Widget>[
-            Icon(
-              icon,
-              color: isSelected
-                  ? scheme.onSecondaryContainer
-                  : scheme.onSurfaceVariant,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? SampanTheme.brandLime
+                    : scheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: SampanTheme.violet900,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isSelected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurface,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: isSelected ? Colors.white : scheme.onSurface,
+                        ),
                   ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isSelected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurfaceVariant,
+                  Text(
+                    subtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: isSelected
+                              ? SampanTheme.brandLime
+                              : scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
+                ],
+              ),
             ),
           ],
         ),

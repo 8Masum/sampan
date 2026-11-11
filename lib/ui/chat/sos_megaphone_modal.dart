@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sampan/state/sampan_providers.dart';
 
-/// High-priority Digital Megaphone (SOS) broadcast modal
-/// (Section 4, Module 2 of `SAMPAN_BLUEPRINT.md`).
+/// Minimalist Material Design 3 Expressive SOS Broadcast Modal.
 class SosMegaphoneModal extends ConsumerStatefulWidget {
   const SosMegaphoneModal({super.key});
 
@@ -18,9 +17,9 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
 
   static const List<String> _presets = <String>[
     'Separated near Laboni Point red lifeguard stand!',
-    'At Sugandha Beach main entrance — looking for Tour Guide!',
-    'Need immediate medical / lifeguard assistance at my GPS coordinates!',
-    'Battery below 10% — freezing my location at Kolatoli Dolphin Circle.',
+    'Waiting at Sugandha Beach main entrance.',
+    'Need help at my current location.',
+    'Battery low — staying at Kolatoli Circle.',
   ];
 
   @override
@@ -47,10 +46,10 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
+        left: 24,
+        right: 24,
         top: 8,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 28,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -58,35 +57,35 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: scheme.error,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Row(
                 children: <Widget>[
                   Icon(
                     Icons.campaign_rounded,
                     color: scheme.onError,
-                    size: 34,
+                    size: 32,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          '🚨 DIGITAL MEGAPHONE (SOS)',
-                          style: textTheme.titleMedium?.copyWith(
+                          'Send SOS Alert',
+                          style: textTheme.titleLarge?.copyWith(
                             color: scheme.onError,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Broadcasts high-priority unencrypted alert + GPS bearing over BLE & SoftAP.',
+                          'Alerts everyone nearby with your exact direction.',
                           style: textTheme.bodySmall?.copyWith(
-                            color: scheme.onError,
+                            color: scheme.onError.withAlpha(230),
                           ),
                         ),
                       ],
@@ -95,11 +94,12 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
-              'One-Tap Emergency Callouts',
+              'Quick messages',
               style: textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w800,
+                color: scheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
@@ -109,7 +109,7 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
                 child: ActionChip(
                   avatar: Icon(
                     Icons.bolt_rounded,
-                    size: 18,
+                    size: 16,
                     color: scheme.error,
                   ),
                   label: Text(
@@ -124,34 +124,29 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
                 ),
               );
             }),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextField(
               key: const ValueKey<String>('sos-custom-message-input'),
               controller: _textController,
               maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Emergency Broadcast Message',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              decoration: const InputDecoration(
+                hintText: 'What happened?',
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             FilledButton.icon(
               key: const ValueKey<String>('confirm-sos-broadcast-btn'),
               onPressed: _fireMegaphone,
               style: FilledButton.styleFrom(
                 backgroundColor: scheme.error,
                 foregroundColor: scheme.onError,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: const StadiumBorder(),
               ),
               icon: const Icon(Icons.wifi_tethering_error_rounded),
               label: const Text(
-                'FIRE SOS MEGAPHONE NOW',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                'Send SOS Now',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
               ),
             ),
           ],

@@ -1,26 +1,26 @@
 <p align="center">
-  <img src="assets/logo.svg" width="128" height="128" alt="Sampan Logo" />
+  <img src="Logo/Sampan.png" width="140" height="140" alt="Sampan Logo" />
 </p>
 
 <h1 align="center">Sampan (সাম্পান)</h1>
 
 <p align="center">
   <strong>Local-First, Zero-Cloud P2P Mesh for Travel &amp; Co-Presence</strong><br>
-  <em>"Navigating crowds, tides, and trails together." — 100% Offline • Zero-Cloud • Material Design 3</em>
+  <em>"Find your people, even offline." — 100% Offline • Zero-Cloud • Material Design 3 Expressive</em>
 </p>
 
 <p align="center">
   <a href="https://github.com/themasum-com/sampan/releases/latest">
-    <img src="https://img.shields.io/github/v/release/themasum-com/sampan?color=E08244&label=Latest%20Release&logo=github" alt="Latest Release" />
+    <img src="https://img.shields.io/github/v/release/themasum-com/sampan?color=6755EF&label=Latest%20Release&logo=github" alt="Latest Release" />
   </a>
   <a href="https://github.com/themasum-com/sampan/actions/workflows/build-apk.yml">
     <img src="https://github.com/themasum-com/sampan/actions/workflows/build-apk.yml/badge.svg?branch=main" alt="Build and Release" />
   </a>
   <a href="#security--cryptography">
-    <img src="https://img.shields.io/badge/Crypto-Ed25519_%2B_ChaCha20-006877.svg" alt="Ed25519 + ChaCha20-Poly1305" />
+    <img src="https://img.shields.io/badge/Crypto-Ed25519_%2B_ChaCha20-6755EF.svg" alt="Ed25519 + ChaCha20-Poly1305" />
   </a>
   <a href="#architecture">
-    <img src="https://img.shields.io/badge/Mesh-BLE_%2B_SoftAP_Hub-2A9D8F.svg" alt="BLE + SoftAP Hub" />
+    <img src="https://img.shields.io/badge/Mesh-BLE_%2B_SoftAP_Hub-4F3CD6.svg" alt="BLE + SoftAP Hub" />
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-3B82F6.svg" alt="MIT License" />
@@ -29,7 +29,7 @@
 
 <p align="center">
   <a href="https://github.com/themasum-com/sampan/releases/latest/download/Sampan.apk">
-    <img src="https://img.shields.io/badge/Download_APK-Sampan.apk-004D5A?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+    <img src="https://img.shields.io/badge/Download_APK-Sampan.apk-6755EF?style=for-the-badge&logo=android&logoColor=F4FF90" alt="Download APK" />
   </a>
 </p>
 
@@ -93,16 +93,15 @@ Solves the "cold-start" adoption dilemma when travelers haven't pre-installed th
 
 ---
 
-## 🎨 Playful Material Design 3 (M3) & Coastal Palette
+## 🎨 Minimalist Material Design 3 Expressive Palette (v2.0.0)
 
 | Token Role | Hex Code | Visual Metaphor & Purpose |
 | :--- | :--- | :--- |
-| **Primary (Ocean Deep)** | `#004D5A` / `#006877` | Deep Bay of Bengal waters; anchors app bars and main actions. |
-| **Primary Container** | `#A1EFFF` / `#002D34` | Crisp shallow waves; used for active status pills and message bubbles. |
-| **Secondary (Sunset Amber)** | `#E08244` / `#F4A261` | Golden coastal sunset; represents caravan hosts, guides, and waypoints. |
-| **Tertiary (Seafoam Green)** | `#2A9D8F` | Coastal vegetation; indicates healthy P2P links and active beacons. |
-| **Surface (Sandy Dune)** | `#FAF8F5` *(Light)* / `#0F1416` *(Dark)* | Warm beach sand; provides a calm, high-legibility canvas. |
-| **Error / SOS (Lifeguard Red)** | `#BA1A1A` / `#FF5449` | Emergency buoy; used for the Digital Megaphone and Virtual Leash alarms. |
+| **Brand Primary (Electric Violet)** | `#6755EF` | Official Sampan brand primary; anchors hero cards, radar dial, and outgoing bubbles. |
+| **Brand Accent (Acid Lime)** | `#F4FF90` | Official Sampan brand highlight; powers hero CTAs, target lock pills, and compass needle. |
+| **Primary Container (Soft Lavender)** | `#DDD4FF` / `#261E4A` | Sculptural M3 containers, incoming chat bubbles, and metric tiles. |
+| **Surface Canvas** | `#F7F5FF` *(Light)* / `#0E0A1F` *(Dark)* | Airy lavender-white light canvas & deep cosmic violet dark canvas. |
+| **Error / SOS** | `#BA1A1A` / `#FF5449` | High-priority SOS broadcast and Safety Leash drift alerts. |
 
 Includes a one-tap **Sunlight High-Contrast Mode (`☀️ >7:1`)** in the top app bar that boosts contrast ratios and font weights for direct tropical beach sunlight.
 

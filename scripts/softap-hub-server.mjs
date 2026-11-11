@@ -62,14 +62,15 @@ export function createSampanSoftApHub(options = {}) {
   <title>Sampan (সাম্পান) — Zero-Install Beach & Trail Hub</title>
   <style>
     :root {
-      --ocean-deep: #004D5A;
-      --ocean-container: #A1EFFF;
-      --sunset-amber: #E08244;
-      --seafoam: #2A9D8F;
-      --sandy-dune: #FAF8F5;
+      --ocean-deep: #6755EF;
+      --ocean-container: #DDD4FF;
+      --sunset-amber: #F4FF90;
+      --seafoam: #4F3CD6;
+      --sandy-dune: #F7F5FF;
       --lifeguard-red: #BA1A1A;
       --surface-card: #FFFFFF;
-      --text-main: #171C1E;
+      --text-main: #1B1145;
+      --legacy-ocean: #004D5A;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--sandy-dune); color: var(--text-main); display: flex; flex-direction: column; height: 100dvh; }

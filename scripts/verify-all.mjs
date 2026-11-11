@@ -400,6 +400,26 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
       workflowYml.includes('--build-number="$BUILD_NUMBER"'),
     'build-apk.yml must use persistent SAMPAN_KEYSTORE_BASE64 signing and embed resolved BUILD_NAME / monotonic BUILD_NUMBER into the release APK',
   );
+
+  // 6. Verify v2.0.0 Logo/Sampan.png asset & Material Design 3 Expressive palette (#6755EF, #F4FF90)
+  assert.ok(
+    fs.existsSync(path.join(ROOT, 'Logo', 'Sampan.png')),
+    'Logo/Sampan.png must exist in repository',
+  );
+  const pubspecYml = fs.readFileSync(path.join(ROOT, 'pubspec.yaml'), 'utf8');
+  assert.ok(
+    pubspecYml.includes('version: 2.0.0+') &&
+      pubspecYml.includes('Logo/Sampan.png'),
+    'pubspec.yaml must declare version 2.0.0+ and bundle Logo/Sampan.png asset',
+  );
+  const themeDart = fs.readFileSync(
+    path.join(ROOT, 'lib', 'core', 'theme', 'sampan_theme.dart'),
+    'utf8',
+  );
+  assert.ok(
+    themeDart.includes('0xFF6755EF') && themeDart.includes('0xFFF4FF90'),
+    'sampan_theme.dart must define official Sampan brand palette (#6755EF and #F4FF90)',
+  );
 });
 
 test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS ingestion & APK route', async () => {

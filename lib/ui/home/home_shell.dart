@@ -14,9 +14,7 @@ import 'package:sampan/ui/chat/caravan_chat_tab.dart';
 import 'package:sampan/ui/hub/softap_hub_tab.dart';
 import 'package:sampan/ui/radar/compass_radar_tab.dart';
 
-/// Main Material Design 3 Shell combining all three core Sampan modules,
-/// Floating Status Pills, Sunlight High-Contrast toggle, and Expansive
-/// Draggable Bottom Sheets (Section 2.2 & Section 4).
+/// Minimalist Material Design 3 Expressive Home Shell for Sampan.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -32,28 +30,31 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext ctx) {
+        final ColorScheme scheme = Theme.of(ctx).colorScheme;
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.58,
+          initialChildSize: 0.56,
           minChildSize: 0.35,
           maxChildSize: 0.88,
           builder: (BuildContext context, ScrollController scrollController) {
             return ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
               children: <Widget>[
                 Text(
-                  'Caravan Roster (${state.peers.length} Peers in BLE Range)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  'People Nearby (${state.peers.length})',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Tap any companion to lock the 3D Compass Homing Dial onto their bearing.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Tap anyone to point your compass toward them.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 ...state.peers.map((PeerModel peer) {
                   final double dist = (peer.lastLatitude != null &&
                           peer.lastLongitude != null)
@@ -74,26 +75,40 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         )
                       : 0.0;
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 10),
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                     child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       leading: CircleAvatar(
+                        radius: 22,
                         backgroundColor: Color(peer.colorHex),
-                        child: Text(peer.avatarIcon),
+                        child: Text(
+                          peer.avatarIcon,
+                          style: const TextStyle(fontSize: 20),
+                        ),
                       ),
                       title: Text(
-                        '${peer.displayName} ${peer.isGuide ? '• Guide' : '• Traveler'}',
+                        peer.displayName,
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       subtitle: Text(
-                        '${peer.fingerprintUri}\n'
-                        'Bearing: ${bearing.round() % 360}° (${GeoMath.cardinalDirectionFromBearing(bearing)}) • '
-                        '${GeoMath.formatDistance(dist)} • RSSI ${peer.rssiDbm} dBm',
+                        '${peer.isGuide ? 'Guide' : 'Traveler'} · '
+                        '${GeoMath.formatDistance(dist)} · '
+                        '${GeoMath.cardinalDirectionFromBearing(bearing)}',
                       ),
-                      isThreeLine: true,
-                      trailing: IconButton(
-                        tooltip: 'Open Direct Message',
-                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      trailing: IconButton.filledTonal(
+                        tooltip: 'Message',
+                        icon: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 18,
+                        ),
                         onPressed: () {
                           ref
                               .read(sampanControllerProvider.notifier)
@@ -134,28 +149,31 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext ctx) {
+        final ColorScheme scheme = Theme.of(ctx).colorScheme;
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.62,
+          initialChildSize: 0.60,
           minChildSize: 0.38,
           maxChildSize: 0.90,
           builder: (BuildContext context, ScrollController scrollController) {
             return ListView(
               controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
               children: <Widget>[
                 Text(
-                  'Spatio-Temporal Noticeboard',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  'Group Pins & Alerts',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Pinned caravan rendezvous waypoints, offline landmark pings, and emergency bulletins.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Share a meeting spot with one tap.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -164,7 +182,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     return ActionChip(
                       avatar: Text(landmark.icon),
                       label: Text(
-                        'Pin ${landmark.name}',
+                        landmark.name,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -179,18 +197,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 ...notices.map((MessageModel item) {
                   final String hh =
                       item.timestamp.hour.toString().padLeft(2, '0');
                   final String mm =
                       item.timestamp.minute.toString().padLeft(2, '0');
-                  final String coords =
-                      (item.latitude != null && item.longitude != null)
-                          ? ' • ${item.latitude!.toStringAsFixed(4)}°N, ${item.longitude!.toStringAsFixed(4)}°E'
-                          : '';
-                  return Card(
+                  return Container(
                     margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: item.isSos
+                          ? scheme.errorContainer
+                          : scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
                     child: ListTile(
                       leading: Icon(
                         item.isSos
@@ -198,12 +218,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                             : (item.isGpsPing
                                 ? Icons.place_rounded
                                 : Icons.push_pin_rounded),
-                        color: item.isSos
-                            ? Theme.of(context).colorScheme.error
-                            : Theme.of(context).colorScheme.secondary,
+                        color: item.isSos ? scheme.error : scheme.primary,
                       ),
                       title: Text(
-                        '${item.senderName} • $hh:$mm$coords',
+                        '${item.senderName} · $hh:$mm',
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
@@ -240,58 +258,55 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) {
+      builder: (BuildContext ctx) {
+        final ColorScheme scheme = Theme.of(ctx).colorScheme;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'GPS Coordinate & Binary Wire Inspector',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                'My Offline Signal',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Identity URI: ${id?.fingerprintUri ?? 'sampan:ed25519:uninitialized'}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'BLE Service UUID: ${SampanConstants.bleServiceUuid}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Offline Satellite GNSS: ${state.userLatitude.toStringAsFixed(5)}°N, '
-                '${state.userLongitude.toStringAsFixed(5)}°E',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
               const SizedBox(height: 12),
-              Text(
-                '28-Byte BLE Telemetry Frame (0x53 0x50 Header):',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: 4),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(22),
                 ),
-                child: SelectableText(
-                  hexWire,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      id?.fingerprintUri ?? 'sampan:ed25519:uninitialized',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'GPS: ${state.userLatitude.toStringAsFixed(5)}°N, '
+                      '${state.userLongitude.toStringAsFixed(5)}°E',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    SelectableText(
+                      hexWire,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -324,7 +339,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 (liveState.updateDownloadProgress * 100).round().clamp(0, 100);
 
             return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -336,44 +351,44 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                           hasUpdate
                               ? Icons.system_update_rounded
                               : Icons.verified_rounded,
-                          color: hasUpdate ? scheme.secondary : scheme.primary,
+                          color: scheme.primary,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'GitHub Release Auto-Update',
                             style: Theme.of(ctx)
                                 .textTheme
-                                .titleMedium
+                                .titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: scheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(22),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            'Installed Version: v${liveState.installedVersion}',
+                            'Installed: v${liveState.installedVersion}',
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             release != null
-                                ? 'Latest GitHub Release: ${release.tagName} (${release.formattedSize})'
-                                : 'Repository: ${SampanConstants.githubOwner}/${SampanConstants.githubRepo}',
+                                ? 'Latest: ${release.tagName} (${release.formattedSize})'
+                                : '${SampanConstants.githubOwner}/${SampanConstants.githubRepo}',
                             style: Theme.of(ctx).textTheme.bodySmall,
                           ),
                           if (liveState.updateStatusMessage != null) ...<Widget>[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8),
                             Text(
                               liveState.updateStatusMessage!,
                               key: const ValueKey<String>(
@@ -382,9 +397,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 12,
-                                color: hasUpdate
-                                    ? scheme.secondary
-                                    : scheme.primary,
+                                color: scheme.primary,
                               ),
                             ),
                           ],
@@ -393,7 +406,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     ),
                     if (release != null &&
                         release.releaseNotes.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(
                         release.releaseTitle,
                         style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
@@ -402,7 +415,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       ),
                       const SizedBox(height: 4),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 120),
+                        constraints: const BoxConstraints(maxHeight: 110),
                         child: SingleChildScrollView(
                           child: Text(
                             release.releaseNotes,
@@ -417,17 +430,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         value: liveState.updateDownloadProgress > 0
                             ? liveState.updateDownloadProgress
                             : null,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Downloading APK... $pct%',
+                        'Downloading... $pct%',
                         style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -451,11 +464,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                             label: Text(
                               liveState.isCheckingForUpdate
                                   ? 'Checking...'
-                                  : 'Check Updates',
+                                  : 'Check',
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton.icon(
                             key: const ValueKey<String>(
@@ -471,7 +484,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                             label: Text(
                               hasUpdate
                                   ? 'Update (${release!.tagName})'
-                                  : 'Reinstall Latest',
+                                  : 'Reinstall',
                             ),
                           ),
                         ),
@@ -497,53 +510,58 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Text(
-                  state.identity?.avatarIcon ?? '⛵',
-                  style: const TextStyle(fontSize: 20),
-                ),
-                const SizedBox(width: 6),
-                const Flexible(
-                  child: Text(
-                    'Sampan (সাম্পান)',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-                  ),
-                ),
-              ],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                SampanConstants.logoAssetPath,
+                width: 34,
+                height: 34,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (
+                  BuildContext context,
+                  Object error,
+                  StackTrace? stackTrace,
+                ) {
+                  return Text(
+                    state.identity?.avatarIcon ?? '⛵',
+                    style: const TextStyle(fontSize: 20),
+                  );
+                },
+              ),
             ),
-            Text(
-              state.identity?.fingerprintUri ?? 'Zero-Cloud P2P Mesh',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
+            const SizedBox(width: 10),
+            const Flexible(
+              child: Text(
+                'Sampan',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 21,
+                  letterSpacing: -0.4,
+                ),
+              ),
             ),
           ],
         ),
         actions: <Widget>[
-          // Sunlight High-Contrast Mode Toggle (>7:1 Contrast Ratio)
           IconButton(
             key: const ValueKey<String>('toggle-sunlight-mode-btn'),
-            tooltip: state.isSunlightMode
-                ? 'Disable Sunlight High-Contrast Mode'
-                : 'Enable Sunlight High-Contrast Mode (>7:1)',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Outdoor Contrast',
             onPressed: controller.toggleSunlightHighContrast,
             icon: Icon(
               state.isSunlightMode
                   ? Icons.wb_sunny_rounded
                   : Icons.wb_sunny_outlined,
-              color: state.isSunlightMode ? scheme.secondary : null,
+              size: 21,
             ),
           ),
-          // Night / Day Mode Toggle
           IconButton(
             key: const ValueKey<String>('toggle-dark-mode-btn'),
-            tooltip: 'Switch Light / Dark Coastal Theme',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Theme',
             onPressed: () {
               final SampanVisualMode next =
                   state.visualMode == SampanVisualMode.dark
@@ -555,70 +573,69 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               state.visualMode == SampanVisualMode.dark
                   ? Icons.dark_mode_rounded
                   : Icons.light_mode_outlined,
+              size: 21,
             ),
           ),
-          // Spatio-Temporal Noticeboard Bottom Sheet
           IconButton(
             key: const ValueKey<String>('open-noticeboard-btn'),
-            tooltip: 'Spatio-Temporal Noticeboard',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Group Pins',
             onPressed: () =>
                 _openSpatioTemporalNoticeboardSheet(context, state),
-            icon: const Icon(Icons.campaign_outlined),
+            icon: const Icon(Icons.push_pin_outlined, size: 21),
           ),
-          // GPS & Binary Protocol Inspector Bottom Sheet
           IconButton(
             key: const ValueKey<String>('open-protocol-inspector-btn'),
-            tooltip: 'GPS & Binary Wire Protocol Inspector',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Signal Info',
             onPressed: () => _openGpsAndProtocolInspectorSheet(context, state),
-            icon: const Icon(Icons.radar_rounded),
+            icon: const Icon(Icons.sensors_rounded, size: 21),
           ),
-          // GitHub Release Auto-Update Sheet
           IconButton(
             key: const ValueKey<String>('open-update-sheet-btn'),
-            tooltip: state.hasAvailableUpdate
-                ? 'Update Available (${state.availableUpdate!.tagName})'
-                : 'Check for GitHub Release Updates',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Updates',
             onPressed: () => _openAppUpdateSheet(context),
             icon: Badge(
               isLabelVisible: state.hasAvailableUpdate,
-              backgroundColor: scheme.secondary,
-              child: Icon(
-                Icons.system_update_rounded,
-                color: state.hasAvailableUpdate ? scheme.secondary : null,
-              ),
+              backgroundColor: SampanTheme.brandViolet,
+              child: const Icon(Icons.system_update_rounded, size: 21),
             ),
           ),
+          const SizedBox(width: 6),
         ],
       ),
       body: Column(
         children: <Widget>[
-          // Floating Status Pills (Section 2.2)
+          // Minimal Status Pills Strip
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: <Widget>[
                   _FloatingStatusPill(
                     key: const ValueKey<String>('pill-ble-peers'),
-                    label: '🟢 ${state.peers.length} Peers in Range (BLE)',
+                    label: '${state.peers.length} nearby',
+                    isHighlighted: true,
                     onTap: () => _openCaravanRosterSheet(context, state),
                   ),
                   const SizedBox(width: 8),
                   _FloatingStatusPill(
                     key: const ValueKey<String>('pill-hotspot-status'),
                     label: state.isSoftApRunning
-                        ? '📡 Hotspot Active (${state.softApClientsCount} Connected)'
-                        : '📡 Hotspot Standby (Tap to Host)',
+                        ? 'Hub live · ${state.softApClientsCount}'
+                        : 'Host hub',
+                    isHighlighted: state.isSoftApRunning,
                     onTap: () => setState(() => _selectedIndex = 2),
                   ),
                   const SizedBox(width: 8),
                   _FloatingStatusPill(
                     key: const ValueKey<String>('pill-compass-status'),
                     label: state.isCompassCalibrated
-                        ? '🧭 Compass Calibrated'
-                        : '🧭 Calibrate Compass',
+                        ? 'Compass ready'
+                        : 'Calibrate',
                     onTap: () => setState(() => _selectedIndex = 0),
                   ),
                 ],
@@ -626,33 +643,32 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
           ),
 
-          // GitHub Release Auto-Update Available Banner
+          // Update Available Pill Banner
           if (state.hasAvailableUpdate && !state.isUpdateBannerDismissed)
             Container(
               key: const ValueKey<String>('update-available-banner'),
               width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: scheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: scheme.secondary.withAlpha(110)),
+                color: SampanTheme.brandLime,
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: <Widget>[
-                  Icon(
-                    Icons.system_update_rounded,
-                    color: scheme.onSecondaryContainer,
-                    size: 20,
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: SampanTheme.violet900,
+                    size: 18,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'New release ${state.availableUpdate!.tagName} is available on GitHub',
-                      style: TextStyle(
-                        color: scheme.onSecondaryContainer,
+                      'Sampan ${state.availableUpdate!.tagName} is ready',
+                      style: const TextStyle(
+                        color: SampanTheme.violet900,
                         fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -664,16 +680,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     },
                     child: const Text(
                       'Update',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        color: SampanTheme.violet900,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   IconButton(
                     key: const ValueKey<String>('dismiss-update-banner-btn'),
                     onPressed: controller.dismissUpdateBanner,
-                    icon: Icon(
-                      Icons.close,
+                    icon: const Icon(
+                      Icons.close_rounded,
                       size: 18,
-                      color: scheme.onSecondaryContainer,
+                      color: SampanTheme.violet900,
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -681,16 +700,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               ),
             ),
 
-          // Active SOS Digital Megaphone Emergency Banner (Section 4, Module 2)
+          // Active SOS Emergency Banner
           if (sosAlert != null)
             Container(
               key: const ValueKey<String>('active-sos-alert-banner'),
               width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: scheme.error,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Row(
                 children: <Widget>[
@@ -701,7 +720,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       sosAlert.content,
                       style: TextStyle(
                         color: scheme.onError,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         fontSize: 13,
                       ),
                     ),
@@ -709,14 +728,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   IconButton(
                     key: const ValueKey<String>('dismiss-sos-alert-btn'),
                     onPressed: controller.dismissActiveSosAlert,
-                    icon: Icon(Icons.close, color: scheme.onError),
+                    icon: Icon(Icons.close_rounded, color: scheme.onError),
                     visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
             ),
 
-          // Active Module View
+          // Active Tab Body
           Expanded(
             child: IndexedStack(
               index: _selectedIndex,
@@ -739,19 +758,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             key: ValueKey<String>('nav-radar'),
             icon: Icon(Icons.explore_outlined),
             selectedIcon: Icon(Icons.explore_rounded),
-            label: 'Compass Radar',
+            label: 'Radar',
           ),
           NavigationDestination(
             key: ValueKey<String>('nav-chat'),
-            icon: Icon(Icons.forum_outlined),
-            selectedIcon: Icon(Icons.forum_rounded),
-            label: 'Caravan Chat',
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            selectedIcon: Icon(Icons.chat_bubble_rounded),
+            label: 'Chat',
           ),
           NavigationDestination(
             key: ValueKey<String>('nav-hub'),
             icon: Icon(Icons.wifi_tethering_outlined),
             selectedIcon: Icon(Icons.wifi_tethering_rounded),
-            label: 'SoftAP Hub',
+            label: 'Hub',
           ),
         ],
       ),
@@ -764,30 +783,51 @@ class _FloatingStatusPill extends StatelessWidget {
     super.key,
     required this.label,
     required this.onTap,
+    this.isHighlighted = false,
   });
 
   final String label;
   final VoidCallback onTap;
+  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: scheme.primary.withAlpha(90)),
+          color: isHighlighted
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
         ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: scheme.onPrimaryContainer,
-                fontWeight: FontWeight.w800,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            if (isHighlighted) ...<Widget>[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  shape: BoxShape.circle,
+                ),
               ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: isHighlighted
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
         ),
       ),
     );
