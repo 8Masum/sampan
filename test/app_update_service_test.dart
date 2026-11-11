@@ -9,6 +9,10 @@ void main() {
       expect(AppUpdateService.normalizeVersion('v1.0.0'), equals('1.0.0'));
       expect(AppUpdateService.normalizeVersion('V2.3.4+12'), equals('2.3.4'));
       expect(AppUpdateService.normalizeVersion('  1.0.1  '), equals('1.0.1'));
+      expect(
+        AppUpdateService.normalizeVersion('release-v1.2.0'),
+        equals('1.2.0'),
+      );
       expect(AppUpdateService.normalizeVersion(''), equals('0.0.0'));
     });
 
@@ -62,6 +66,35 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        AppUpdateService.isNewerVersion(
+          currentVersion: '1.0.0-beta.1',
+          latestVersion: 'v1.0.0-beta.2',
+        ),
+        isTrue,
+      );
+      expect(
+        AppUpdateService.isNewerVersion(
+          currentVersion: '1.0.0',
+          latestVersion: 'v1.0.0.1',
+        ),
+        isTrue,
+      );
+    });
+
+    test('extracts release tag from GitHub HTML redirect URL', () {
+      expect(
+        AppUpdateService.extractTagFromRedirectUrl(
+          'https://github.com/8Masum/sampan/releases/tag/v1.2.0',
+        ),
+        equals('v1.2.0'),
+      );
+      expect(
+        AppUpdateService.extractTagFromRedirectUrl(
+          'https://github.com/themasum-com/sampan/releases/latest',
+        ),
+        isNull,
+      );
     });
   });
 
@@ -107,7 +140,8 @@ void main() {
       expect(info.formattedSize, equals('20.0 MB'));
     });
 
-    test('marks draft or prerelease as not available for auto-update', () {
+    test('marks draft, prerelease, or release without APK asset as not ready',
+        () {
       final Map<String, dynamic> draftJson = <String, dynamic>{
         'tag_name': 'v2.0.0',
         'draft': true,
@@ -118,6 +152,26 @@ void main() {
         currentVersion: '1.0.0',
       );
       expect(info.isUpdateAvailable, isFalse);
+
+      final Map<String, dynamic> noApkAssetsJson = <String, dynamic>{
+        'tag_name': 'v2.0.0',
+        'draft': false,
+        'prerelease': false,
+        'assets': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'name': 'SHA256SUMS.txt',
+            'size': 161,
+            'browser_download_url':
+                'https://github.com/themasum-com/sampan/releases/download/v2.0.0/SHA256SUMS.txt',
+          },
+        ],
+      };
+      final ReleaseUpdateInfo noApkInfo =
+          AppUpdateService.parseGitHubReleaseJson(
+        noApkAssetsJson,
+        currentVersion: '1.0.0',
+      );
+      expect(noApkInfo.isUpdateAvailable, isFalse);
     });
 
     test('validates APK ZIP magic bytes and triggers installer', () async {

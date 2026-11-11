@@ -12,6 +12,7 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.ClipData
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
@@ -532,23 +533,34 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
                 !packageManager.canRequestPackageInstalls()
             ) {
                 pendingInstallApkFile = targetFile
-                val settingsIntent = Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:$packageName")
-                ).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                try {
+                    val settingsIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:$packageName")
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(settingsIntent)
+                } catch (_: Throwable) {
+                    val fallbackIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(fallbackIntent)
                 }
-                startActivity(settingsIntent)
                 return "permission_requested"
             }
 
             startPackageInstallerIntent(targetFile)
             "installer_launched"
         } catch (_: Throwable) {
+            pendingInstallApkFile = null
             "failed"
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun startPackageInstallerIntent(apkFile: File) {
         val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Uri.parse("content://${applicationContext.packageName}.fileprovider/update/${apkFile.name}")
@@ -557,6 +569,8 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
         }
         val installIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
+            clipData = ClipData.newRawUri("", apkUri)
+            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -578,7 +592,8 @@ class ApkFileProvider : ContentProvider() {
         val updatesDir = File(ctx.filesDir, "updates").canonicalFile
         val fileName = uri.lastPathSegment ?: "Sampan-update.apk"
         val candidate = File(updatesDir, fileName).canonicalFile
-        if (!candidate.path.startsWith(updatesDir.path) || !candidate.exists()) {
+        val updatesPrefix = updatesDir.path + File.separator
+        if (!candidate.path.startsWith(updatesPrefix) || !candidate.exists()) {
             throw FileNotFoundException("APK file not found: $uri")
         }
         return candidate

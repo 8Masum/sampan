@@ -706,8 +706,9 @@ class SampanController extends StateNotifier<SampanAppState> {
     if (!mounted) return null;
     state = state.copyWith(
       isCheckingForUpdate: true,
-      updateStatusMessage:
-          silent ? state.updateStatusMessage : 'Checking GitHub Releases...',
+      updateStatusMessage: (silent || state.isDownloadingUpdate)
+          ? state.updateStatusMessage
+          : 'Checking GitHub Releases...',
     );
 
     try {
@@ -725,14 +726,15 @@ class SampanController extends StateNotifier<SampanAppState> {
         isCheckingForUpdate: false,
         isUpdateBannerDismissed:
             info.isUpdateAvailable ? false : state.isUpdateBannerDismissed,
-        updateStatusMessage: statusMsg,
+        updateStatusMessage:
+            state.isDownloadingUpdate ? state.updateStatusMessage : statusMsg,
       );
       return info;
     } on Object {
       if (mounted) {
         state = state.copyWith(
           isCheckingForUpdate: false,
-          updateStatusMessage: silent
+          updateStatusMessage: (silent || state.isDownloadingUpdate)
               ? state.updateStatusMessage
               : 'Offline — could not reach GitHub Releases.',
         );
@@ -746,7 +748,13 @@ class SampanController extends StateNotifier<SampanAppState> {
   Future<String> downloadAndInstallAppUpdate() async {
     if (state.isDownloadingUpdate) return 'busy';
 
-    final ReleaseUpdateInfo targetRelease = state.availableUpdate ??
+    ReleaseUpdateInfo? resolvedRelease = state.availableUpdate;
+    if (resolvedRelease == null && !state.isCheckingForUpdate) {
+      resolvedRelease = await checkForAppUpdate(silent: true);
+      if (!mounted) return 'failed';
+    }
+
+    final ReleaseUpdateInfo targetRelease = resolvedRelease ??
         ReleaseUpdateInfo(
           currentVersion: state.installedVersion,
           latestVersion: state.installedVersion,

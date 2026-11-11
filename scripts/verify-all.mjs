@@ -363,8 +363,21 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
   );
   assert.ok(
     mainActivityKt.includes('class ApkFileProvider : ContentProvider()') &&
-      mainActivityKt.includes('"installApk"'),
-    'MainActivity.kt must provide ApkFileProvider and installApk handler for GitHub Release OTA updates',
+      mainActivityKt.includes('"installApk"') &&
+      mainActivityKt.includes('ClipData.newRawUri') &&
+      mainActivityKt.includes('updatesDir.path + File.separator'),
+    'MainActivity.kt must provide hardened ApkFileProvider (with File.separator boundary) and ClipData URI permission propagation for GitHub Release OTA updates',
+  );
+
+  const appUpdateServiceDart = fs.readFileSync(
+    path.join(ROOT, 'lib', 'data', 'services', 'app_update_service.dart'),
+    'utf8',
+  );
+  assert.ok(
+    appUpdateServiceDart.includes('receivedBytes != totalBytes') &&
+      appUpdateServiceDart.includes('_fetchReleaseViaHtmlRedirect') &&
+      appUpdateServiceDart.includes('hasReadyApk'),
+    'app_update_service.dart must verify complete download byte count, guard against releases without APK assets, and provide HTML redirect fallback for GitHub API rate limits',
   );
 
   const androidManifest = fs.readFileSync(
@@ -382,8 +395,10 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     'utf8',
   );
   assert.ok(
-    workflowYml.includes('SAMPAN_KEYSTORE_BASE64'),
-    'build-apk.yml must use persistent SAMPAN_KEYSTORE_BASE64 signing so Android allows in-place APK auto-updates',
+    workflowYml.includes('SAMPAN_KEYSTORE_BASE64') &&
+      workflowYml.includes('--build-name="$BUILD_NAME"') &&
+      workflowYml.includes('--build-number="$BUILD_NUMBER"'),
+    'build-apk.yml must use persistent SAMPAN_KEYSTORE_BASE64 signing and embed resolved BUILD_NAME / monotonic BUILD_NUMBER into the release APK',
   );
 });
 

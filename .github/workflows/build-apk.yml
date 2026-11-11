@@ -108,8 +108,51 @@ jobs:
           echo "Verified signing keystore fingerprint:"
           keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | grep -E "Alias|SHA256"
 
+      - name: Resolve Release Version & Monotonic Build Number
+        id: version_meta
+        run: |
+          RAW_VER_LINE=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          RAW_VER_NAME=$(echo "$RAW_VER_LINE" | cut -d'+' -f1)
+          PKG_VERSION="v${RAW_VER_NAME:-1.0.0}"
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+          elif [ -n "${{ inputs.tag_name }}" ]; then
+            RELEASE_TAG="${{ inputs.tag_name }}"
+          else
+            RELEASE_TAG="$PKG_VERSION"
+          fi
+
+          if [[ "$RELEASE_TAG" != v* ]]; then
+            RELEASE_TAG="v$RELEASE_TAG"
+          fi
+
+          # Extract clean semantic build-name (e.g. v1.0.1 -> 1.0.1) so the compiled
+          # APK's packageInfo.versionName matches the GitHub Release tag.
+          BUILD_NAME="${RELEASE_TAG#v}"
+          BUILD_NAME="${BUILD_NAME%%+*}"
+          if [[ ! "$BUILD_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            BUILD_NAME="${RAW_VER_NAME:-1.0.0}"
+          fi
+
+          # Compute a monotonically increasing integer versionCode across versions
+          # and CI runs so Android PackageManager always permits in-place upgrades.
+          IFS='.' read -r V_MAJ V_MIN V_PAT _ <<< "${BUILD_NAME%%-*}"
+          V_MAJ=${V_MAJ//[^0-9]/}; V_MAJ=${V_MAJ:-1}
+          V_MIN=${V_MIN//[^0-9]/}; V_MIN=${V_MIN:-0}
+          V_PAT=${V_PAT//[^0-9]/}; V_PAT=${V_PAT:-0}
+          SEMVER_CODE=$(( V_MAJ * 10000 + V_MIN * 100 + V_PAT ))
+          RUN_OFFSET=$(( ${GITHUB_RUN_NUMBER:-1} % 1000 ))
+          BUILD_NUMBER=$(( SEMVER_CODE * 1000 + RUN_OFFSET ))
+
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "Resolved RELEASE_TAG=$RELEASE_TAG, BUILD_NAME=$BUILD_NAME, BUILD_NUMBER=$BUILD_NUMBER"
+
       - name: Build Standalone Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
 
       - name: Prepare APK Release Assets
         id: prepare_assets
@@ -124,22 +167,6 @@ jobs:
           echo "APK signing certificate:"
           keytool -printcert -jarfile "$APK_FILE" | grep -E "Owner|SHA256" || true
 
-          RAW_VER=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
-          PKG_VERSION="v${RAW_VER:-1.0.0}"
-
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
-          elif [ -n "${{ inputs.tag_name }}" ]; then
-            RELEASE_TAG="${{ inputs.tag_name }}"
-          else
-            RELEASE_TAG="$PKG_VERSION"
-          fi
-
-          if [[ "$RELEASE_TAG" != v* ]]; then
-            RELEASE_TAG="v$RELEASE_TAG"
-          fi
-
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
           echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cp "$APK_FILE" release-assets/Sampan.apk
@@ -161,6 +188,7 @@ jobs:
       - name: Publish GitHub Release
         if: >
           startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
           (github.event_name == 'workflow_dispatch' && (inputs.publish_release == true || inputs.publish_release == 'true'))
         uses: softprops/action-gh-release@v2
         with:

@@ -63,28 +63,40 @@ class AppUpdateService {
   final ReleaseJsonFetcher? _jsonFetcher;
   final ApkFileDownloader? _apkDownloader;
 
-  /// Normalizes a version string such as `'v1.2.0+3'` into `'1.2.0'`.
+  /// Normalizes a version string such as `'v1.2.0+3'` or `'release-v1.2.0'`
+  /// into `'1.2.0'`.
   static String normalizeVersion(String raw) {
     String cleaned = raw.trim();
+    final int plusIdx = cleaned.indexOf('+');
+    if (plusIdx != -1) {
+      cleaned = cleaned.substring(0, plusIdx).trim();
+    }
     if (cleaned.startsWith('v') || cleaned.startsWith('V')) {
       cleaned = cleaned.substring(1).trim();
     }
-    final int plusIdx = cleaned.indexOf('+');
-    if (plusIdx != -1) {
-      cleaned = cleaned.substring(0, plusIdx);
+    final RegExp semverPattern = RegExp(
+      r'(\d+\.\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?)',
+    );
+    final RegExpMatch? match = semverPattern.firstMatch(cleaned);
+    if (match != null) {
+      final String? extracted = match.group(1);
+      if (extracted != null && extracted.isNotEmpty) {
+        return extracted;
+      }
     }
     return cleaned.isEmpty ? '0.0.0' : cleaned;
   }
 
-  /// Parses `[major, minor, patch]` numeric segments from a version string.
+  /// Parses `[major, minor, patch, ...]` numeric segments from a version string.
   static List<int> parseVersionNumbers(String raw) {
     final String normalized = normalizeVersion(raw);
     final int dashIdx = normalized.indexOf('-');
     final String core =
         dashIdx != -1 ? normalized.substring(0, dashIdx) : normalized;
     final List<String> parts = core.split('.');
-    final List<int> nums = <int>[0, 0, 0];
-    for (int i = 0; i < 3 && i < parts.length; i++) {
+    final int count = parts.length > 3 ? parts.length : 3;
+    final List<int> nums = List<int>.filled(count, 0);
+    for (int i = 0; i < parts.length; i++) {
       nums[i] = int.tryParse(parts[i].trim()) ?? 0;
     }
     return nums;
@@ -103,20 +115,51 @@ class AppUpdateService {
 
     final List<int> cur = parseVersionNumbers(normCurrent);
     final List<int> lat = parseVersionNumbers(normLatest);
+    final int maxLen = cur.length > lat.length ? cur.length : lat.length;
 
-    for (int i = 0; i < 3; i++) {
-      if (lat[i] > cur[i]) return true;
-      if (lat[i] < cur[i]) return false;
+    for (int i = 0; i < maxLen; i++) {
+      final int curVal = i < cur.length ? cur[i] : 0;
+      final int latVal = i < lat.length ? lat[i] : 0;
+      if (latVal > curVal) return true;
+      if (latVal < curVal) return false;
     }
 
-    // If numeric [major, minor, patch] are equal, a stable release is newer
-    // than a pre-release (e.g. '1.0.0' > '1.0.0-beta.1'), but not vice versa.
-    final bool curIsPre = normCurrent.contains('-');
-    final bool latIsPre = normLatest.contains('-');
+    // If numeric segments are equal, a stable release is newer than a
+    // pre-release (e.g. '1.0.0' > '1.0.0-beta.1'), and '1.0.0-beta.2' > '1.0.0-beta.1'.
+    final int curDash = normCurrent.indexOf('-');
+    final int latDash = normLatest.indexOf('-');
+    final bool curIsPre = curDash != -1;
+    final bool latIsPre = latDash != -1;
     if (curIsPre && !latIsPre) {
       return true;
     }
+    if (!curIsPre && latIsPre) {
+      return false;
+    }
+    if (curIsPre && latIsPre) {
+      final String curPre = normCurrent.substring(curDash + 1);
+      final String latPre = normLatest.substring(latDash + 1);
+      return _comparePrereleaseIdentifiers(curPre, latPre) < 0;
+    }
     return false;
+  }
+
+  static int _comparePrereleaseIdentifiers(String a, String b) {
+    if (a == b) return 0;
+    final List<String> aParts = a.split('.');
+    final List<String> bParts = b.split('.');
+    final int len = aParts.length < bParts.length ? aParts.length : bParts.length;
+    for (int i = 0; i < len; i++) {
+      final int? aNum = int.tryParse(aParts[i]);
+      final int? bNum = int.tryParse(bParts[i]);
+      if (aNum != null && bNum != null) {
+        if (aNum != bNum) return aNum.compareTo(bNum);
+      } else {
+        final int cmp = aParts[i].compareTo(bParts[i]);
+        if (cmp != 0) return cmp;
+      }
+    }
+    return aParts.length.compareTo(bParts.length);
   }
 
   /// Parses a GitHub Releases API JSON payload into a [ReleaseUpdateInfo].
@@ -147,7 +190,10 @@ class AppUpdateService {
     int? apkSize;
 
     final Object? assetsRaw = json['assets'];
+    bool hasExplicitAssetsList = false;
+    bool foundApkAsset = false;
     if (assetsRaw is List<dynamic>) {
+      hasExplicitAssetsList = true;
       Map<String, dynamic>? preferredAsset;
       Map<String, dynamic>? fallbackApkAsset;
 
@@ -170,6 +216,7 @@ class AppUpdateService {
 
       final Map<String, dynamic>? chosen = preferredAsset ?? fallbackApkAsset;
       if (chosen != null) {
+        foundApkAsset = true;
         final String? chosenUrl = chosen['browser_download_url'] as String?;
         if (chosenUrl != null && chosenUrl.isNotEmpty) {
           apkUrl = chosenUrl;
@@ -187,8 +234,10 @@ class AppUpdateService {
       publishedAt = DateTime.tryParse(pubRaw);
     }
 
+    final bool hasReadyApk = !hasExplicitAssetsList || foundApkAsset;
     final bool updateAvailable = !isDraft &&
         !isPrerelease &&
+        hasReadyApk &&
         isNewerVersion(
           currentVersion: normCurrent,
           latestVersion: latestVersion,
@@ -279,6 +328,16 @@ class AppUpdateService {
         headerBytes[3] == 0x04;
   }
 
+  /// Extracts the release tag from a GitHub `/releases/tag/<tag>` redirect URL.
+  static String? extractTagFromRedirectUrl(String url) {
+    final RegExp tagRegex = RegExp(r'/releases/tag/([^/?#]+)');
+    final RegExpMatch? match = tagRegex.firstMatch(url);
+    if (match == null) return null;
+    final String? raw = match.group(1);
+    if (raw == null || raw.trim().isEmpty) return null;
+    return Uri.decodeComponent(raw.trim());
+  }
+
   static Future<Map<String, dynamic>> _defaultFetchReleaseJson(Uri uri) async {
     final HttpClient client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
@@ -296,6 +355,10 @@ class AppUpdateService {
 
       final HttpClientResponse response =
           await request.close().timeout(const Duration(seconds: 10));
+      if (response.statusCode == 403 || response.statusCode == 429) {
+        await response.drain<void>();
+        return await _fetchReleaseViaHtmlRedirect(client);
+      }
       if (response.statusCode != 200) {
         throw HttpException(
           'GitHub Releases API returned HTTP ${response.statusCode}',
@@ -315,6 +378,53 @@ class AppUpdateService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  /// Fallback when `api.github.com` is rate-limited (HTTP 403/429 on shared
+  /// caravan Wi-Fi or carrier CGNAT): resolves `/releases/latest` via HTTP 302
+  /// redirect to `/releases/tag/<tag>`.
+  static Future<Map<String, dynamic>> _fetchReleaseViaHtmlRedirect(
+    HttpClient client,
+  ) async {
+    final Uri latestWebUri = Uri.parse(
+      'https://github.com/${SampanConstants.githubOwner}/${SampanConstants.githubRepo}/releases/latest',
+    );
+    final HttpClientRequest request =
+        await client.getUrl(latestWebUri).timeout(const Duration(seconds: 10));
+    request.headers.set(
+      HttpHeaders.userAgentHeader,
+      'Sampan-Android-Updater/${SampanConstants.appVersion}',
+    );
+    final HttpClientResponse response =
+        await request.close().timeout(const Duration(seconds: 10));
+    await response.drain<void>();
+
+    String? resolvedTag;
+    for (final RedirectInfo redirect in response.redirects) {
+      resolvedTag = extractTagFromRedirectUrl(redirect.location.toString()) ??
+          resolvedTag;
+    }
+    if (resolvedTag == null || resolvedTag.isEmpty) {
+      throw HttpException(
+        'Could not resolve latest release tag from GitHub redirect',
+        uri: latestWebUri,
+      );
+    }
+
+    return <String, dynamic>{
+      'tag_name': resolvedTag,
+      'name': 'Sampan (সাম্পান) $resolvedTag',
+      'body': 'Release $resolvedTag available on GitHub Releases.',
+      'draft': false,
+      'prerelease': false,
+      'assets': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'Sampan.apk',
+          'browser_download_url':
+              'https://github.com/${SampanConstants.githubOwner}/${SampanConstants.githubRepo}/releases/download/$resolvedTag/Sampan.apk',
+        },
+      ],
+    };
   }
 
   static Future<File> _defaultDownloadApkFile({
@@ -352,7 +462,8 @@ class AppUpdateService {
 
       final IOSink sink = partFile.openWrite();
       try {
-        await for (final List<int> chunk in response) {
+        await for (final List<int> chunk
+            in response.timeout(const Duration(seconds: 45))) {
           sink.add(chunk);
           receivedBytes += chunk.length;
           if (totalBytes > 0) {
@@ -366,12 +477,28 @@ class AppUpdateService {
         await sink.close();
       }
 
+      if (totalBytes > 0 && receivedBytes != totalBytes) {
+        throw HttpException(
+          'Incomplete APK download: received $receivedBytes of $totalBytes bytes',
+          uri: url,
+        );
+      }
+
       if (destinationFile.existsSync()) {
         await destinationFile.delete();
       }
       final File renamed = await partFile.rename(destinationFile.path);
       onProgress?.call(1.0);
       return renamed;
+    } on Object {
+      if (partFile.existsSync()) {
+        try {
+          await partFile.delete();
+        } on Object {
+          // Ignore cleanup errors on partial download failure.
+        }
+      }
+      rethrow;
     } finally {
       client.close(force: true);
     }
