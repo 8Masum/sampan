@@ -39,7 +39,7 @@ void main() {
         void Function(double progress)? onProgress,
       }) async {
         onProgress?.call(1.0);
-        await destinationFile.writeAsBytes(
+        destinationFile.writeAsBytesSync(
           const <int>[0x50, 0x4B, 0x03, 0x04, 0x01, 0x02],
         );
         return destinationFile;

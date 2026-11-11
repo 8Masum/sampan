@@ -235,7 +235,7 @@ class AppUpdateService {
         ? Directory('$appDir/updates')
         : Directory('${Directory.systemTemp.path}/sampan_updates');
     if (!baseDir.existsSync()) {
-      await baseDir.create(recursive: true);
+      baseDir.createSync(recursive: true);
     }
 
     final File destinationFile = File('${baseDir.path}/Sampan-update.apk');
@@ -253,7 +253,13 @@ class AppUpdateService {
       throw const FileSystemException('Downloaded APK file is empty');
     }
 
-    final List<int> header = await downloaded.openRead(0, 4).first;
+    final RandomAccessFile raf = downloaded.openSync(mode: FileMode.read);
+    final Uint8List header;
+    try {
+      header = raf.readSync(4);
+    } finally {
+      raf.closeSync();
+    }
     if (!hasValidApkZipHeader(header)) {
       throw const FormatException(
         'Downloaded file is not a valid Android APK package',
