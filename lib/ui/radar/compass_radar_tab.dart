@@ -123,7 +123,7 @@ class CompassRadarTab extends ConsumerWidget {
                 child: Text(
                   isAligned
                       ? 'LOCKED ON TARGET (±10°): Walk straight ahead (${GeoMath.formatDistance(distanceMeters)})'
-                      : 'Target: ${target?.displayName ?? 'None'} • Bearing ${bearingDeg.round().toString().padLeft(3, '0')}° ($cardinal) • ${GeoMath.formatDistance(distanceMeters)}',
+                      : 'Target: ${target?.displayName ?? 'None'} • Bearing ${(bearingDeg.round() % 360).toString().padLeft(3, '0')}° ($cardinal) • ${GeoMath.formatDistance(distanceMeters)}',
                   style: textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: isAligned
@@ -144,9 +144,9 @@ class CompassRadarTab extends ConsumerWidget {
               child: _MetricCard(
                 label: 'BEARING (β)',
                 value:
-                    '${bearingDeg.round().toString().padLeft(3, '0')}° ($cardinal)',
+                    '${(bearingDeg.round() % 360).toString().padLeft(3, '0')}° ($cardinal)',
                 subtitle:
-                    'Heading α: ${state.compassHeadingDegrees.round().toString().padLeft(3, '0')}°',
+                    'Heading α: ${(state.compassHeadingDegrees.round() % 360).toString().padLeft(3, '0')}°',
                 icon: Icons.explore_outlined,
               ),
             ),

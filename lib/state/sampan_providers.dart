@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -176,9 +177,14 @@ class SampanController extends StateNotifier<SampanAppState> {
   final SoftApHubService _softApHubService;
   final NativeBridge _nativeBridge;
 
+  static const String kFallbackLocalPublicKeyHex =
+      '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff';
+
   StreamSubscription<List<PeerModel>>? _peersSub;
   StreamSubscription<List<MessageModel>>? _messagesSub;
   StreamSubscription<void>? _hubStatsSub;
+  Timer? _hardwareSyncTimer;
+  String? _lastTriggeredSosId;
   bool _wasAlignedWithTarget = false;
 
   Future<void> _init() async {
@@ -187,14 +193,25 @@ class SampanController extends StateNotifier<SampanAppState> {
 
     if (!mounted) return;
     final List<PeerModel> initialPeers = _database.currentPeers;
+    final IdentityProfile? savedIdentity = _database.identity;
     state = state.copyWith(
       isInitialized: true,
-      identity: _database.identity,
+      identity: savedIdentity,
       peers: initialPeers,
       messages: _database.currentMessages,
       selectedTargetPeerId: state.selectedTargetPeerId ??
           (initialPeers.isNotEmpty ? initialPeers.first.id : null),
     );
+
+    if (savedIdentity != null) {
+      await _nativeBridge.requestRuntimePermissions();
+      await _bleMeshService.broadcastOwnTelemetry(
+        identity: savedIdentity,
+        latitude: state.userLatitude,
+        longitude: state.userLongitude,
+        speedMetersPerSecond: 0.9,
+      );
+    }
 
     _peersSub = _database.watchPeers().listen((List<PeerModel> updatedPeers) {
       if (!mounted) return;
@@ -209,8 +226,14 @@ class SampanController extends StateNotifier<SampanAppState> {
         _database.watchMessages().listen((List<MessageModel> updatedMessages) {
       if (!mounted) return;
       MessageModel? latestSos = state.activeSosAlert;
-      if (updatedMessages.isNotEmpty && updatedMessages.last.isSos) {
-        latestSos = updatedMessages.last;
+      for (int i = updatedMessages.length - 1; i >= 0; i--) {
+        if (updatedMessages[i].isSos) {
+          if (updatedMessages[i].id != _lastTriggeredSosId) {
+            _lastTriggeredSosId = updatedMessages[i].id;
+            latestSos = updatedMessages[i];
+          }
+          break;
+        }
       }
       state = state.copyWith(
         messages: updatedMessages,
@@ -225,6 +248,13 @@ class SampanController extends StateNotifier<SampanAppState> {
     final List<String> localIps = await _nativeBridge.getLocalIpv4Addresses();
     if (!mounted) return;
     state = state.copyWith(softApIps: localIps);
+
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      _hardwareSyncTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => refreshHardwareSensors(),
+      );
+    }
   }
 
   /// Creates the user's zero-cloud Ed25519 identity in `< 10s` (Section 5.1).
@@ -329,6 +359,14 @@ class SampanController extends StateNotifier<SampanAppState> {
         userLongitude: snapshot.longitude,
         isCompassCalibrated: snapshot.isCompassCalibrated,
       );
+      if (state.identity != null) {
+        await _bleMeshService.broadcastOwnTelemetry(
+          identity: state.identity!,
+          latitude: snapshot.latitude,
+          longitude: snapshot.longitude,
+          speedMetersPerSecond: snapshot.speedMetersPerSecond,
+        );
+      }
     }
     await _bleMeshService.pollAndIngestScannedFrames();
   }
@@ -401,10 +439,8 @@ class SampanController extends StateNotifier<SampanAppState> {
 
     final IdentityProfile sender = state.identity ??
         IdentityProfile(
-          publicKeyHex:
-              '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
-          privateSeedHex:
-              '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
+          publicKeyHex: kFallbackLocalPublicKeyHex,
+          privateSeedHex: kFallbackLocalPublicKeyHex,
           displayName: 'Local Traveler',
           avatarIcon: '⛵',
           colorHex: 0xFF006877,
@@ -449,7 +485,7 @@ class SampanController extends StateNotifier<SampanAppState> {
         '${landmark.latitude.toStringAsFixed(4)}, ${landmark.longitude.toStringAsFixed(4)}';
     final MessageModel ping = MessageModel(
       id: 'ping-${now.microsecondsSinceEpoch}',
-      senderId: sender?.publicKeyHex ?? 'local-user',
+      senderId: sender?.publicKeyHex ?? kFallbackLocalPublicKeyHex,
       senderName: sender?.displayName ?? 'Local Traveler',
       senderRole: sender?.role ?? 'traveler',
       recipientId: state.activeDmPeerId,
@@ -463,6 +499,21 @@ class SampanController extends StateNotifier<SampanAppState> {
       isDelivered: true,
       isEncrypted: true,
     );
+
+    if (sender != null) {
+      await _bleMeshService.broadcastOwnTelemetry(
+        identity: sender,
+        latitude: landmark.latitude,
+        longitude: landmark.longitude,
+        speedMetersPerSecond: 0.8,
+      );
+      await _bleMeshService.buildOutgoingMessageFrame(
+        sender: sender,
+        content: ping.content,
+        isSos: false,
+        recipientPublicKeyHex: state.activeDmPeerId,
+      );
+    }
 
     _softApHubService.updateHostLocation(
       latitude: landmark.latitude,
@@ -488,10 +539,8 @@ class SampanController extends StateNotifier<SampanAppState> {
   }) async {
     final IdentityProfile sender = state.identity ??
         IdentityProfile(
-          publicKeyHex:
-              '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
-          privateSeedHex:
-              '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
+          publicKeyHex: kFallbackLocalPublicKeyHex,
+          privateSeedHex: kFallbackLocalPublicKeyHex,
           displayName: 'Rahim',
           avatarIcon: '🛟',
           colorHex: 0xFFBA1A1A,
@@ -516,7 +565,8 @@ class SampanController extends StateNotifier<SampanAppState> {
         endLat: state.userLatitude,
         endLon: state.userLongitude,
       );
-      final String bearingStr = bearing.round().toString().padLeft(3, '0');
+      final String bearingStr =
+          (bearing.round() % 360).toString().padLeft(3, '0');
       telemetrySuffix =
           ' [Bearing: $bearingStr°, ${GeoMath.formatDistance(dist)}]';
     }
@@ -546,6 +596,7 @@ class SampanController extends StateNotifier<SampanAppState> {
       isEncrypted: false,
     );
 
+    _lastTriggeredSosId = sosMsg.id;
     await _database.insertMessage(sosMsg);
     if (mounted) {
       state = state.copyWith(
@@ -604,6 +655,7 @@ class SampanController extends StateNotifier<SampanAppState> {
 
   @override
   void dispose() {
+    _hardwareSyncTimer?.cancel();
     _peersSub?.cancel();
     _messagesSub?.cancel();
     _hubStatsSub?.cancel();

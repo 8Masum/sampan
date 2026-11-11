@@ -19,8 +19,11 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
+import android.os.Bundle
+import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -29,11 +32,16 @@ import java.net.NetworkInterface
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
-class MainActivity : FlutterActivity(), SensorEventListener {
+class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
     private val channelName = "sampan.mesh/native"
     private val sampanManufacturerId = 0x5350 // 'S' 'P'
+    private val permissionRequestCode = 5350
 
     private var sensorManager: SensorManager? = null
+    private var locationManager: LocationManager? = null
+    private var isListeningGnss = false
+    private var latestGnssLocation: Location? = null
+
     private val gravity = FloatArray(3)
     private val geomagnetic = FloatArray(3)
     private var hasGravity = false
@@ -43,6 +51,7 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     private var bleAdvertiser: BluetoothLeAdvertiser? = null
     private var bleScanner: BluetoothLeScanner? = null
     private var isScanning = false
+    private var lastAdvertisingPayload: ByteArray? = null
     private val discoveredFrames = ConcurrentHashMap<String, Map<String, Any>>()
 
     private val advertiseCallback = object : AdvertiseCallback() {}
@@ -51,11 +60,14 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             val scanResult = result ?: return
             val record = scanResult.scanRecord ?: return
-            val rawPayload = record.getManufacturerSpecificData(sampanManufacturerId)
-                ?: record.bytes
-                ?: return
+            val mfgData = record.getManufacturerSpecificData(sampanManufacturerId)
+            val frame28 = if (mfgData != null) {
+                extractSampan28ByteFrame(mfgData, isManufacturerData = true)
+            } else {
+                val rawBytes = record.bytes ?: return
+                extractSampan28ByteFrame(rawBytes, isManufacturerData = false)
+            } ?: return
 
-            val frame28 = extractSampan28ByteFrame(rawPayload) ?: return
             val address = try {
                 scanResult.device?.address ?: "ble-peer"
             } catch (_: Throwable) {
@@ -72,10 +84,18 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         setupCompassSensor()
+        startGnssLocationUpdates()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "getAppDataDir" -> {
+                        try {
+                            result.success(applicationContext.filesDir.absolutePath)
+                        } catch (_: Throwable) {
+                            result.success(null)
+                        }
+                    }
                     "getApkPath" -> {
                         try {
                             result.success(applicationContext.applicationInfo.sourceDir)
@@ -87,6 +107,7 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                         result.success(enumerateLocalIpv4Addresses())
                     }
                     "getSensorSnapshot" -> {
+                        startGnssLocationUpdates()
                         result.success(readSensorAndGnssSnapshot())
                     }
                     "requestPermissions" -> {
@@ -95,6 +116,7 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                     "startBleAdvertising" -> {
                         val payload = call.argument<ByteArray>("payload")
                         val started = if (payload != null) {
+                            lastAdvertisingPayload = payload
                             startSampanBleAdvertising(payload)
                         } else {
                             false
@@ -113,7 +135,26 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             }
     }
 
-    private fun extractSampan28ByteFrame(bytes: ByteArray): ByteArray? {
+    /**
+     * Reconstructs the canonical 28-byte Sampan Telemetry Frame:
+     * `[0x53, 0x50, 0x01, role(1B), lat(4B), lon(4B), speed(2B), key(14B)]`.
+     *
+     * When advertised via `addManufacturerData(0x5350, payload26)`, Android's
+     * BLE stack transmits `0x5350` as the 2-byte Manufacturer ID and the
+     * remaining 26 bytes as manufacturer-specific data so the total legacy BLE
+     * advertisement PDU is 30 bytes (<= 31-byte BLE limit).
+     */
+    private fun extractSampan28ByteFrame(
+        bytes: ByteArray,
+        isManufacturerData: Boolean
+    ): ByteArray? {
+        if (isManufacturerData && bytes.size == 26 && bytes[0] == 0x01.toByte()) {
+            val reconstructed = ByteArray(28)
+            reconstructed[0] = 0x53.toByte()
+            reconstructed[1] = 0x50.toByte()
+            System.arraycopy(bytes, 0, reconstructed, 2, 26)
+            return reconstructed
+        }
         if (bytes.size == 28 &&
             bytes[0] == 0x53.toByte() &&
             bytes[1] == 0x50.toByte() &&
@@ -121,13 +162,19 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         ) {
             return bytes
         }
-        if (bytes.size > 28) {
+        if (bytes.size >= 28) {
             for (i in 0..(bytes.size - 28)) {
-                if (bytes[i] == 0x53.toByte() &&
-                    bytes[i + 1] == 0x50.toByte() &&
+                val isBigEndianMagic =
+                    bytes[i] == 0x53.toByte() && bytes[i + 1] == 0x50.toByte()
+                val isLittleEndianMfgId =
+                    bytes[i] == 0x50.toByte() && bytes[i + 1] == 0x53.toByte()
+                if ((isBigEndianMagic || isLittleEndianMfgId) &&
                     bytes[i + 2] == 0x01.toByte()
                 ) {
-                    return bytes.copyOfRange(i, i + 28)
+                    val out = bytes.copyOfRange(i, i + 28)
+                    out[0] = 0x53.toByte()
+                    out[1] = 0x50.toByte()
+                    return out
                 }
             }
         }
@@ -136,6 +183,8 @@ class MainActivity : FlutterActivity(), SensorEventListener {
 
     private fun requestMeshRuntimePermissions(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            startGnssLocationUpdates()
+            ensureBleScannerRunning()
             return true
         }
         return try {
@@ -155,11 +204,28 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                 checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
             }
             if (missing.isNotEmpty()) {
-                requestPermissions(missing.toTypedArray(), 5350)
+                requestPermissions(missing.toTypedArray(), permissionRequestCode)
+            } else {
+                startGnssLocationUpdates()
+                ensureBleScannerRunning()
+                lastAdvertisingPayload?.let { startSampanBleAdvertising(it) }
             }
             true
         } catch (_: Throwable) {
             false
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == permissionRequestCode) {
+            startGnssLocationUpdates()
+            ensureBleScannerRunning()
+            lastAdvertisingPayload?.let { startSampanBleAdvertising(it) }
         }
     }
 
@@ -176,6 +242,19 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             bleAdvertiser = advertiser
             advertiser.stopAdvertising(advertiseCallback)
 
+            // Strip the 2-byte magic prefix (0x53, 0x50) because 0x5350 is passed
+            // as the 2-byte BLE Manufacturer ID. This keeps the advertisement AD
+            // structure at 2B (AD header) + 2B (0x5350) + 26B (body) = 30 bytes,
+            // fitting cleanly inside the 31-byte legacy BLE PDU limit.
+            val mfgPayload = if (payload28Bytes.size == 28 &&
+                payload28Bytes[0] == 0x53.toByte() &&
+                payload28Bytes[1] == 0x50.toByte()
+            ) {
+                payload28Bytes.copyOfRange(2, 28)
+            } else {
+                payload28Bytes
+            }
+
             val settings = AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
@@ -185,7 +264,7 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             val data = AdvertiseData.Builder()
                 .setIncludeDeviceName(false)
                 .setIncludeTxPowerLevel(false)
-                .addManufacturerData(sampanManufacturerId, payload28Bytes)
+                .addManufacturerData(sampanManufacturerId, mfgPayload)
                 .build()
 
             advertiser.startAdvertising(settings, data, advertiseCallback)
@@ -220,6 +299,54 @@ class MainActivity : FlutterActivity(), SensorEventListener {
             isScanning = false
         }
     }
+
+    @SuppressLint("MissingPermission")
+    private fun startGnssLocationUpdates() {
+        if (isListeningGnss) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            val lm = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+            locationManager = lm
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lm.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    2000L,
+                    1.0f,
+                    this,
+                    Looper.getMainLooper()
+                )
+                isListeningGnss = true
+            }
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                lm.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER,
+                    4000L,
+                    2.0f,
+                    this,
+                    Looper.getMainLooper()
+                )
+                isListeningGnss = true
+            }
+        } catch (_: SecurityException) {
+            isListeningGnss = false
+        } catch (_: Throwable) {
+            isListeningGnss = false
+        }
+    }
+
+    override fun onLocationChanged(location: Location) {
+        latestGnssLocation = location
+    }
+
+    @Deprecated("Deprecated in Android API")
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+    override fun onProviderEnabled(provider: String) {}
+    override fun onProviderDisabled(provider: String) {}
 
     private fun setupCompassSensor() {
         try {
@@ -264,6 +391,10 @@ class MainActivity : FlutterActivity(), SensorEventListener {
     override fun onDestroy() {
         try {
             sensorManager?.unregisterListener(this)
+            if (isListeningGnss) {
+                locationManager?.removeUpdates(this)
+                isListeningGnss = false
+            }
             bleAdvertiser?.stopAdvertising(advertiseCallback)
             if (isScanning) {
                 bleScanner?.stopScan(scanCallback)
@@ -301,11 +432,11 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         var speed = 0.0
         var hasFix = false
         try {
-            val locationManager =
-                getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            val gpsLoc: Location? =
-                locationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                    ?: locationManager?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val lm = locationManager
+                ?: (getSystemService(Context.LOCATION_SERVICE) as? LocationManager)
+            val gpsLoc: Location? = latestGnssLocation
+                ?: lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (gpsLoc != null) {
                 lat = gpsLoc.latitude
                 lon = gpsLoc.longitude

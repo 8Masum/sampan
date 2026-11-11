@@ -31,14 +31,17 @@ void main() {
     return true;
   };
 
-  final String storagePath =
+  final String fallbackStoragePath =
       '${Directory.systemTemp.path}${Platform.pathSeparator}sampan_local_store.json';
 
   runApp(
     ProviderScope(
       overrides: <Override>[
         localDatabaseProvider.overrideWithValue(
-          LocalDatabase(storageFilePath: storagePath),
+          LocalDatabase(
+            storageFilePath: fallbackStoragePath,
+            resolvePersistentPath: true,
+          ),
         ),
       ],
       child: const SampanApp(),

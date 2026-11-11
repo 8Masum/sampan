@@ -42,6 +42,24 @@ class NativeBridge {
 
   static const MethodChannel _channel = MethodChannel('sampan.mesh/native');
 
+  /// Returns the persistent internal application files directory on Android
+  /// (`applicationContext.filesDir.absolutePath`) so on-device identity,
+  /// peers, and messages are stored in non-volatile storage rather than cache.
+  Future<String?> getAppDataDirectory() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return null;
+    }
+    try {
+      final String? dir = await _channel.invokeMethod<String>('getAppDataDir');
+      if (dir != null && dir.isNotEmpty) {
+        return dir;
+      }
+    } on Object {
+      // Fallback when running on non-Android platforms or tests.
+    }
+    return null;
+  }
+
   /// Returns the path to the currently installed Android APK (`sourceDir`)
   /// so the embedded `shelf` server can stream it over SoftAP Wi-Fi at 25 MB/s
   /// with zero internet connectivity (Section 4, Module 3).

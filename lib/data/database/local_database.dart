@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/services/native_bridge.dart';
 
 /// Local-first, reactive database for Sampan (`Peers` and `Messages` tables
 /// defined in Section 5.2 of `SAMPAN_BLUEPRINT.md`).
@@ -12,10 +13,19 @@ import 'package:sampan/data/models/peer_model.dart';
 /// Provides Drift-style reactive `watchPeers()` and `watchMessages()` streams
 /// backed by an indexed in-memory cache and atomic on-device persistence.
 class LocalDatabase {
-  LocalDatabase({String? storageFilePath})
-      : _storageFilePath = storageFilePath;
+  LocalDatabase({
+    String? storageFilePath,
+    bool resolvePersistentPath = false,
+    NativeBridge nativeBridge = const NativeBridge(),
+  })  : _storageFilePath = storageFilePath,
+        _resolvePersistentPath = resolvePersistentPath,
+        _nativeBridge = nativeBridge;
 
-  final String? _storageFilePath;
+  String? _storageFilePath;
+  final bool _resolvePersistentPath;
+  final NativeBridge _nativeBridge;
+
+  String? get storageFilePath => _storageFilePath;
 
   /// Canonical SQLite DDL statements matching Section 5.2.
   static const String kPeersTableSql = '''
@@ -92,6 +102,13 @@ CREATE TABLE IF NOT EXISTS messages (
 
   /// Loads persisted snapshot from disk if [storageFilePath] was configured.
   Future<void> initialize() async {
+    if (_resolvePersistentPath) {
+      final String? appDir = await _nativeBridge.getAppDataDirectory();
+      if (appDir != null && appDir.isNotEmpty) {
+        _storageFilePath =
+            '$appDir${Platform.pathSeparator}sampan_local_store.json';
+      }
+    }
     final String? path = _storageFilePath;
     if (path == null) return;
     try {
@@ -324,7 +341,14 @@ CREATE TABLE IF NOT EXISTS messages (
         'peers': _peersById.values.map((PeerModel p) => p.toMap()).toList(),
         'messages': _messages.map((MessageModel m) => m.toMap()).toList(),
       };
-      await file.writeAsString(jsonEncode(snapshot), flush: true);
+      final String encoded = jsonEncode(snapshot);
+      final File tmpFile = File('$path.tmp');
+      await tmpFile.writeAsString(encoded, flush: true);
+      try {
+        tmpFile.renameSync(path);
+      } on Object {
+        await file.writeAsString(encoded, flush: true);
+      }
     } on Object {
       // Ignore file I/O errors in restricted or read-only sandboxes.
     }

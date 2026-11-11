@@ -335,12 +335,38 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     widgetTestContent.includes('tester.ensureVisible'),
     'widget_smoke_test.dart must call tester.ensureVisible before tapping scrollable buttons',
   );
+
+  // 5. Verify Android MainActivity.kt strips 2-byte 0x5350 header for addManufacturerData
+  // so legacy BLE advertisement PDU stays <= 31 bytes (2B AD + 2B 0x5350 + 26B body = 30B)
+  const mainActivityKt = fs.readFileSync(
+    path.join(
+      ROOT,
+      'android',
+      'app',
+      'src',
+      'main',
+      'kotlin',
+      'com',
+      'themasum',
+      'sampan',
+      'MainActivity.kt',
+    ),
+    'utf8',
+  );
+  assert.ok(
+    mainActivityKt.includes('payload28Bytes.copyOfRange(2, 28)'),
+    'MainActivity.kt must strip 2-byte magic prefix when calling addManufacturerData(0x5350, ...) to stay within 31-byte BLE PDU limit',
+  );
+  assert.ok(
+    mainActivityKt.includes('onRequestPermissionsResult'),
+    'MainActivity.kt must handle onRequestPermissionsResult to start BLE/GNSS after user grants permissions',
+  );
 });
 
 test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS ingestion & APK route', async () => {
   const hub = createSampanSoftApHub({
-    hostName: 'Tanvir Ahmed',
-    hostLandmark: 'Laboni Point',
+    hostName: "Tanvir's <Guide>",
+    hostLandmark: "Cox's Bazar — Laboni Point",
     hostLatitude: 21.4272,
     hostLongitude: 91.9702,
   });
@@ -349,6 +375,8 @@ test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS inges
   assert.ok(html.includes('Sampan (সাম্পান)'));
   assert.ok(html.includes('/download/sampan.apk'));
   assert.ok(html.includes('#004D5A'));
+  assert.ok(html.includes('Tanvir&#39;s &lt;Guide&gt;'), 'Host name must be HTML-escaped');
+  assert.ok(html.includes('Cox&#39;s Bazar'), 'Landmark must be HTML-escaped');
   assert.ok(html.includes('<script>'), 'Portal HTML must include client-side <script>');
   assert.ok(html.includes('function sendText()'), 'Portal HTML must define sendText()');
   assert.ok(html.includes('function sendMegaphone()'), 'Portal HTML must define sendMegaphone()');
@@ -435,5 +463,10 @@ test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS inges
   await sandbox.sendText();
   assert.equal(postedBodies.length, 1);
   assert.equal(hub.getStats().messagesCount, 3);
+
+  // Simulate clicking Share Offline GPS fallback (verifies apostrophe in landmark does not break JS)
+  await sandbox.sendLocation();
+  assert.equal(postedBodies.length, 2);
+  assert.equal(hub.getStats().messagesCount, 4);
 });
 

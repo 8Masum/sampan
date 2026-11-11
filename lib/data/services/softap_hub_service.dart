@@ -6,6 +6,7 @@ import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/data/database/local_database.dart';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
+import 'package:sampan/data/models/peer_model.dart';
 import 'package:sampan/data/services/native_bridge.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -26,6 +27,7 @@ class SoftApHubService {
   StreamSubscription<List<MessageModel>>? _dbMessagesSub;
   final Set<StreamController<List<int>>> _sseControllers =
       <StreamController<List<int>>>{};
+  final Set<String> _broadcastedMessageIds = <String>{};
   final StreamController<void> _statsController =
       StreamController<void>.broadcast();
 
@@ -77,9 +79,15 @@ class SoftApHubService {
       shared: true,
     );
 
+    _broadcastedMessageIds
+      ..clear()
+      ..addAll(_database.currentMessages.map((MessageModel m) => m.id));
+
     _dbMessagesSub = _database.watchMessages().listen((List<MessageModel> all) {
-      if (all.isNotEmpty) {
-        _broadcastSseMessage(all.last);
+      for (final MessageModel msg in all) {
+        if (_broadcastedMessageIds.add(msg.id)) {
+          _broadcastSseMessage(msg);
+        }
       }
     });
 
@@ -90,6 +98,7 @@ class SoftApHubService {
   Future<void> stopServer() async {
     await _dbMessagesSub?.cancel();
     _dbMessagesSub = null;
+    _broadcastedMessageIds.clear();
 
     for (final StreamController<List<int>> controller
         in _sseControllers.toList()) {
@@ -218,20 +227,57 @@ class SoftApHubService {
         };
 
         final DateTime now = DateTime.now();
+        final String resolvedSenderId =
+            (data['senderId'] as String?) ?? 'softap-guest';
+        final String resolvedSenderName =
+            senderName.isEmpty ? 'Beach Guest' : senderName;
+        final String rawRole =
+            (data['role'] as String?)?.toLowerCase() ?? 'traveler';
+        final String resolvedRole =
+            (rawRole == 'host' || rawRole == 'guide') ? 'guide' : 'traveler';
+        final double? lat = (data['latitude'] as num?)?.toDouble();
+        final double? lon = (data['longitude'] as num?)?.toDouble();
+
         final MessageModel message = MessageModel(
           id: 'softap-${now.microsecondsSinceEpoch}',
-          senderId: (data['senderId'] as String?) ?? 'softap-guest',
-          senderName: senderName.isEmpty ? 'Beach Guest' : senderName,
-          senderRole: (data['role'] as String?)?.toLowerCase() ?? 'traveler',
+          senderId: resolvedSenderId,
+          senderName: resolvedSenderName,
+          senderRole: resolvedRole,
           content: text,
           type: normalizedType,
-          latitude: (data['latitude'] as num?)?.toDouble(),
-          longitude: (data['longitude'] as num?)?.toDouble(),
+          latitude: lat,
+          longitude: lon,
           landmarkName: data['landmark'] as String?,
           timestamp: now,
           isDelivered: true,
           isEncrypted: false,
         );
+
+        if (lat != null && lon != null) {
+          final PeerModel? existing = _database.getPeerById(resolvedSenderId);
+          final PeerModel peerUpdate = existing != null
+              ? existing.copyWith(
+                  displayName: resolvedSenderName,
+                  role: resolvedRole,
+                  lastLatitude: lat,
+                  lastLongitude: lon,
+                  lastSeen: now,
+                )
+              : PeerModel(
+                  id: resolvedSenderId,
+                  displayName: resolvedSenderName.length > 32
+                      ? resolvedSenderName.substring(0, 32)
+                      : resolvedSenderName,
+                  avatarIcon: resolvedRole == 'guide' ? '⛵' : '🏄',
+                  colorHex: resolvedRole == 'guide' ? 0xFFE08244 : 0xFF2A9D8F,
+                  role: resolvedRole,
+                  lastLatitude: lat,
+                  lastLongitude: lon,
+                  lastSeen: now,
+                  rssiDbm: -55,
+                );
+          await _database.upsertPeer(peerUpdate);
+        }
 
         await _database.insertMessage(message);
         return Response.ok(
@@ -308,11 +354,24 @@ class SoftApHubService {
     };
   }
 
+  static String _escapeHtml(String input) {
+    return input
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+  }
+
   /// Generates the Zero-Install Responsive Web Client HTML (Section 4, Module 3)
   /// styled with Sampan's Playful Material Design 3 Coastal Maritime Palette.
   String buildZeroInstallPortalHtml() {
     final IdentityProfile? host = _database.identity;
-    final String hostName = host?.displayName ?? 'Tanvir Ahmed (Guide)';
+    final String hostName =
+        _escapeHtml(host?.displayName ?? 'Tanvir Ahmed (Guide)');
+    final String safeLandmarkHtml = _escapeHtml(_hostLandmark);
+    final String safeCheckinJsLiteral =
+        jsonEncode('📍 Checked in near $_hostLandmark');
     final String coords =
         '${_hostLatitude.toStringAsFixed(4)}°N, ${_hostLongitude.toStringAsFixed(4)}°E';
 
@@ -376,7 +435,7 @@ class SoftApHubService {
 
   <div class="host-bar">
     <span>🧭 Host: $hostName</span>
-    <span>📍 $_hostLandmark ($coords)</span>
+    <span>📍 $safeLandmarkHtml ($coords)</span>
   </div>
 
   <div id="setup-bar">
@@ -456,7 +515,7 @@ class SoftApHubService {
 
     function sendLocation() {
       if (!navigator.geolocation) {
-        postMessage({ type: 'gps_ping', text: '📍 Checked in near $_hostLandmark' });
+        postMessage({ type: 'gps_ping', text: $safeCheckinJsLiteral });
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -470,13 +529,13 @@ class SoftApHubService {
             text: '📍 Offline Satellite GPS: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
           });
         },
-        () => postMessage({ type: 'gps_ping', text: '📍 Checked in near $_hostLandmark' }),
+        () => postMessage({ type: 'gps_ping', text: $safeCheckinJsLiteral }),
         { enableHighAccuracy: true, timeout: 8000 }
       );
     }
 
     function escapeHtml(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
   </script>
 </body>

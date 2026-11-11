@@ -78,6 +78,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Landmark Ping: At Laboni Point'), findsWidgets);
 
+    // Fire SOS Digital Megaphone, verify banner, dismiss it, and ensure it stays dismissed
+    await tester.tap(
+      find.byKey(const ValueKey<String>('open-sos-megaphone-btn')),
+    );
+    await tester.pumpAndSettle();
+    final Finder confirmSosBtn =
+        find.byKey(const ValueKey<String>('confirm-sos-broadcast-btn'));
+    await tester.ensureVisible(confirmSosBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(confirmSosBtn);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('active-sos-alert-banner')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('dismiss-sos-alert-btn')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('active-sos-alert-banner')),
+      findsNothing,
+    );
+
+    // Trigger another database update (landmark ping) and confirm dismissed SOS does not reappear
+    await tester.tap(
+      find.byKey(const ValueKey<String>('landmark-chip-laboni_point')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('active-sos-alert-banner')),
+      findsNothing,
+    );
+
     // 5. Switch to Module 3 (SoftAP Hub)
     await tester.tap(find.byKey(const ValueKey<String>('nav-hub')));
     await tester.pumpAndSettle();

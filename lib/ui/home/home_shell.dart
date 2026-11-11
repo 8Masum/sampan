@@ -86,7 +86,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       ),
                       subtitle: Text(
                         '${peer.fingerprintUri}\n'
-                        'Bearing: ${bearing.round()}° (${GeoMath.cardinalDirectionFromBearing(bearing)}) • '
+                        'Bearing: ${bearing.round() % 360}° (${GeoMath.cardinalDirectionFromBearing(bearing)}) • '
                         '${GeoMath.formatDistance(dist)} • RSSI ${peer.rssiDbm} dBm',
                       ),
                       isThreeLine: true,

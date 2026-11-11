@@ -40,8 +40,20 @@ export function createSampanSoftApHub(options = {}) {
     }
   }
 
+  function escapeServerHtml(input) {
+    return String(input)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function getPortalHtml() {
     const coords = `${hostLatitude.toFixed(4)}°N, ${hostLongitude.toFixed(4)}°E`;
+    const safeHostHtml = escapeServerHtml(hostName);
+    const safeLandmarkHtml = escapeServerHtml(hostLandmark);
+    const safeCheckinJsLiteral = JSON.stringify(`📍 Checked in near ${hostLandmark}`);
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -98,8 +110,8 @@ export function createSampanSoftApHub(options = {}) {
     <span class="apk-btn">Get APK</span>
   </a>
   <div class="host-bar">
-    <span>🧭 Host: ${hostName}</span>
-    <span>📍 ${hostLandmark} (${coords})</span>
+    <span>🧭 Host: ${safeHostHtml}</span>
+    <span>📍 ${safeLandmarkHtml} (${coords})</span>
   </div>
   <div id="setup-bar">
     <select id="role"><option value="Guest" selected>Traveler</option><option value="Host">Guide</option></select>
@@ -171,7 +183,7 @@ export function createSampanSoftApHub(options = {}) {
 
     function sendLocation() {
       if (!navigator.geolocation) {
-        postMessage({ type: 'gps_ping', text: '📍 Checked in near ${hostLandmark}' });
+        postMessage({ type: 'gps_ping', text: ${safeCheckinJsLiteral} });
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -185,13 +197,13 @@ export function createSampanSoftApHub(options = {}) {
             text: '📍 Offline Satellite GPS: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
           });
         },
-        () => postMessage({ type: 'gps_ping', text: '📍 Checked in near ${hostLandmark}' }),
+        () => postMessage({ type: 'gps_ping', text: ${safeCheckinJsLiteral} }),
         { enableHighAccuracy: true, timeout: 8000 }
       );
     }
 
     function escapeHtml(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
   </script>
 </body>

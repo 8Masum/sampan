@@ -116,13 +116,18 @@ void main() {
         ),
       );
 
-      final SoftApHubService hub = SoftApHubService(database: db);
+      final SoftApHubService hub = SoftApHubService(database: db)
+        ..updateHostLocation(
+          latitude: 21.4272,
+          longitude: 91.9702,
+          landmark: "Cox's Bazar — Laboni Point",
+        );
       final int port = await hub.startServer(port: 0);
       expect(port, greaterThan(0));
 
       final HttpClient client = HttpClient();
       try {
-        // 1. GET / serves Zero-Install Portal HTML
+        // 1. GET / serves Zero-Install Portal HTML with safe JS/HTML escaping
         final HttpClientRequest getReq =
             await client.get('127.0.0.1', port, '/');
         final HttpClientResponse getRes = await getReq.close();
@@ -130,8 +135,10 @@ void main() {
         final String html = await utf8.decoder.bind(getRes).join();
         expect(html, contains('Sampan (সাম্পান)'));
         expect(html, contains('/download/sampan.apk'));
+        expect(html, contains('Cox&#39;s Bazar'));
+        expect(html, contains('"📍 Checked in near Cox\'s Bazar — Laboni Point"'));
 
-        // 2. POST /send injects SOS alert from browser guest into LocalDatabase
+        // 2. POST /send injects SOS alert and GPS peer coordinates into LocalDatabase
         final HttpClientRequest postReq =
             await client.post('127.0.0.1', port, '/send');
         postReq.headers.contentType = ContentType.json;
@@ -141,6 +148,8 @@ void main() {
             'sender': 'Rahim (Browser)',
             'role': 'Guest',
             'type': 'sos',
+            'latitude': 21.4265,
+            'longitude': 91.9712,
             'text': 'Need guide near red lifeguard stand!',
           }),
         );
@@ -150,6 +159,9 @@ void main() {
 
         final List<MessageModel> msgs = db.currentMessages;
         expect(msgs.any((MessageModel m) => m.isSos), isTrue);
+        final PeerModel? guestPeer = db.getPeerById('web-guest-1');
+        expect(guestPeer, isNotNull);
+        expect(guestPeer!.lastLatitude, closeTo(21.4265, 0.0001));
 
         // 3. GET /download/sampan.apk increments transfer counter
         final HttpClientRequest apkReq =
@@ -162,6 +174,45 @@ void main() {
         client.close(force: true);
         await hub.stopServer();
         await db.dispose();
+      }
+    });
+
+    test('LocalDatabase persists and reloads identity, peers, and messages atomically',
+        () async {
+      final Directory tmpDir =
+          await Directory.systemTemp.createTemp('sampan_db_test_');
+      final String dbFile =
+          '${tmpDir.path}${Platform.pathSeparator}sampan_test_store.json';
+
+      try {
+        final LocalDatabase db1 = LocalDatabase(storageFilePath: dbFile);
+        await db1.saveIdentity(
+          IdentityProfile(
+            publicKeyHex:
+                '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f3f9c',
+            privateSeedHex:
+                '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f3f9c',
+            displayName: 'Tanvir Ahmed',
+            avatarIcon: '⛵',
+            colorHex: 0xFFE08244,
+            role: 'guide',
+            createdAt: DateTime.utc(2026, 11, 11),
+          ),
+        );
+        await db1.seedDemoCaravanIfEmpty();
+        await db1.dispose();
+
+        final LocalDatabase db2 = LocalDatabase(storageFilePath: dbFile);
+        await db2.initialize();
+        expect(db2.identity, isNotNull);
+        expect(db2.identity!.displayName, equals('Tanvir Ahmed'));
+        expect(db2.currentPeers.length, equals(4));
+        expect(db2.currentMessages.length, equals(2));
+        await db2.dispose();
+      } finally {
+        if (tmpDir.existsSync()) {
+          await tmpDir.delete(recursive: true);
+        }
       }
     });
   });

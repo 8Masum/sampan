@@ -47,7 +47,8 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final TextTheme textTheme = Theme.of(context).textTheme;
 
-    final String myId = state.identity?.publicKeyHex ?? 'local-user';
+    final String myId = state.identity?.publicKeyHex ??
+        SampanController.kFallbackLocalPublicKeyHex;
     final PeerModel? activeDmPeer = state.activeDmPeer;
     final List<MessageModel> visibleMessages = activeDmPeer == null
         ? state.messages
