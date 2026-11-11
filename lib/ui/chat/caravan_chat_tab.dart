@@ -312,13 +312,16 @@ class _MessageBubble extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  '${message.senderName} (${message.senderRole == 'guide' ? 'Guide' : 'Traveler'})',
-                  style: textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isMe
-                        ? scheme.primaryContainer
-                        : scheme.onPrimaryContainer,
+                Flexible(
+                  child: Text(
+                    '${message.senderName} (${message.senderRole == 'guide' ? 'Guide' : 'Traveler'})',
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: isMe
+                          ? scheme.primaryContainer
+                          : scheme.onPrimaryContainer,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),

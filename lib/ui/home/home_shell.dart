@@ -320,9 +320,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(width: 6),
-                const Text(
-                  'Sampan (সাম্পান)',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                const Flexible(
+                  child: Text(
+                    'Sampan (সাম্পান)',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                  ),
                 ),
               ],
             ),

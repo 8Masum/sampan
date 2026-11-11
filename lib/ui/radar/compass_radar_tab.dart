@@ -178,10 +178,13 @@ class CompassRadarTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(
-                    'Magnetometer Heading (α): ${state.compassHeadingDegrees.round()}°',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      'Magnetometer Heading (α): ${state.compassHeadingDegrees.round()}°',
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   TextButton.icon(
