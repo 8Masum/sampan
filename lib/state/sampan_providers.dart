@@ -1,196 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sampan/core/constants/landmarks.dart';
 import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/core/crypto/identity_crypto_service.dart';
 import 'package:sampan/core/math/geo_math.dart';
-import 'package:sampan/core/protocol/wire_protocol.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/database/local_database.dart';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/models/spot_model.dart';
 import 'package:sampan/data/services/app_update_service.dart';
 import 'package:sampan/data/services/ble_mesh_service.dart';
 import 'package:sampan/data/services/native_bridge.dart';
 import 'package:sampan/data/services/softap_hub_service.dart';
+import 'package:sampan/state/sampan_app_state.dart';
 
-/// Immutable application state managed by Riverpod 2.x.
-@immutable
-class SampanAppState {
-  const SampanAppState({
-    required this.isInitialized,
-    required this.visualMode,
-    required this.userLatitude,
-    required this.userLongitude,
-    required this.compassHeadingDegrees,
-    required this.isCompassCalibrated,
-    required this.peers,
-    required this.messages,
-    required this.isSoftApRunning,
-    required this.softApPort,
-    required this.softApIps,
-    required this.softApClientsCount,
-    required this.softApApkDownloads,
-    required this.isBleBeaconing,
-    this.installedVersion = SampanConstants.appVersion,
-    this.availableUpdate,
-    this.isCheckingForUpdate = false,
-    this.isDownloadingUpdate = false,
-    this.updateDownloadProgress = 0.0,
-    this.updateStatusMessage,
-    this.isUpdateBannerDismissed = false,
-    this.identity,
-    this.selectedTargetPeerId,
-    this.activeDmPeerId,
-    this.activeSosAlert,
-  });
-
-  factory SampanAppState.initial() {
-    return const SampanAppState(
-      isInitialized: false,
-      visualMode: SampanVisualMode.light,
-      userLatitude: 21.4272, // Laboni Point, Cox's Bazar
-      userLongitude: 91.9702,
-      compassHeadingDegrees: 18.0,
-      isCompassCalibrated: true,
-      peers: <PeerModel>[],
-      messages: <MessageModel>[],
-      isSoftApRunning: false,
-      softApPort: SampanConstants.softApDefaultPort,
-      softApIps: <String>['192.168.43.1'],
-      softApClientsCount: 0,
-      softApApkDownloads: 0,
-      isBleBeaconing: true,
-    );
-  }
-
-  final bool isInitialized;
-  final SampanVisualMode visualMode;
-  final IdentityProfile? identity;
-  final double userLatitude;
-  final double userLongitude;
-  final double compassHeadingDegrees;
-  final bool isCompassCalibrated;
-  final List<PeerModel> peers;
-  final List<MessageModel> messages;
-  final String? selectedTargetPeerId;
-  final String? activeDmPeerId;
-  final MessageModel? activeSosAlert;
-  final bool isSoftApRunning;
-  final int softApPort;
-  final List<String> softApIps;
-  final int softApClientsCount;
-  final int softApApkDownloads;
-  final bool isBleBeaconing;
-  final String installedVersion;
-  final ReleaseUpdateInfo? availableUpdate;
-  final bool isCheckingForUpdate;
-  final bool isDownloadingUpdate;
-  final double updateDownloadProgress;
-  final String? updateStatusMessage;
-  final bool isUpdateBannerDismissed;
-
-  bool get isSunlightMode =>
-      visualMode == SampanVisualMode.sunlightHighContrast;
-
-  bool get hasAvailableUpdate =>
-      availableUpdate != null && availableUpdate!.isUpdateAvailable;
-
-  PeerModel? get selectedTargetPeer {
-    if (peers.isEmpty) return null;
-    if (selectedTargetPeerId != null) {
-      for (final PeerModel p in peers) {
-        if (p.id == selectedTargetPeerId) return p;
-      }
-    }
-    return peers.first;
-  }
-
-  PeerModel? get activeDmPeer {
-    if (activeDmPeerId == null) return null;
-    for (final PeerModel p in peers) {
-      if (p.id == activeDmPeerId) return p;
-    }
-    return null;
-  }
-
-  List<PeerModel> get trippedLeashPeers =>
-      peers.where((PeerModel p) => p.isLeashFrozen).toList(growable: false);
-
-  SampanAppState copyWith({
-    bool? isInitialized,
-    SampanVisualMode? visualMode,
-    IdentityProfile? identity,
-    bool clearIdentity = false,
-    double? userLatitude,
-    double? userLongitude,
-    double? compassHeadingDegrees,
-    bool? isCompassCalibrated,
-    List<PeerModel>? peers,
-    List<MessageModel>? messages,
-    String? selectedTargetPeerId,
-    String? activeDmPeerId,
-    bool clearActiveDmPeer = false,
-    MessageModel? activeSosAlert,
-    bool clearActiveSosAlert = false,
-    bool? isSoftApRunning,
-    int? softApPort,
-    List<String>? softApIps,
-    int? softApClientsCount,
-    int? softApApkDownloads,
-    bool? isBleBeaconing,
-    String? installedVersion,
-    ReleaseUpdateInfo? availableUpdate,
-    bool clearAvailableUpdate = false,
-    bool? isCheckingForUpdate,
-    bool? isDownloadingUpdate,
-    double? updateDownloadProgress,
-    String? updateStatusMessage,
-    bool clearUpdateStatusMessage = false,
-    bool? isUpdateBannerDismissed,
-  }) {
-    return SampanAppState(
-      isInitialized: isInitialized ?? this.isInitialized,
-      visualMode: visualMode ?? this.visualMode,
-      identity: clearIdentity ? null : (identity ?? this.identity),
-      userLatitude: userLatitude ?? this.userLatitude,
-      userLongitude: userLongitude ?? this.userLongitude,
-      compassHeadingDegrees:
-          compassHeadingDegrees ?? this.compassHeadingDegrees,
-      isCompassCalibrated: isCompassCalibrated ?? this.isCompassCalibrated,
-      peers: peers ?? this.peers,
-      messages: messages ?? this.messages,
-      selectedTargetPeerId: selectedTargetPeerId ?? this.selectedTargetPeerId,
-      activeDmPeerId:
-          clearActiveDmPeer ? null : (activeDmPeerId ?? this.activeDmPeerId),
-      activeSosAlert:
-          clearActiveSosAlert ? null : (activeSosAlert ?? this.activeSosAlert),
-      isSoftApRunning: isSoftApRunning ?? this.isSoftApRunning,
-      softApPort: softApPort ?? this.softApPort,
-      softApIps: softApIps ?? this.softApIps,
-      softApClientsCount: softApClientsCount ?? this.softApClientsCount,
-      softApApkDownloads: softApApkDownloads ?? this.softApApkDownloads,
-      isBleBeaconing: isBleBeaconing ?? this.isBleBeaconing,
-      installedVersion: installedVersion ?? this.installedVersion,
-      availableUpdate:
-          clearAvailableUpdate ? null : (availableUpdate ?? this.availableUpdate),
-      isCheckingForUpdate: isCheckingForUpdate ?? this.isCheckingForUpdate,
-      isDownloadingUpdate: isDownloadingUpdate ?? this.isDownloadingUpdate,
-      updateDownloadProgress:
-          updateDownloadProgress ?? this.updateDownloadProgress,
-      updateStatusMessage: clearUpdateStatusMessage
-          ? null
-          : (updateStatusMessage ?? this.updateStatusMessage),
-      isUpdateBannerDismissed:
-          isUpdateBannerDismissed ?? this.isUpdateBannerDismissed,
-    );
-  }
-}
+export 'package:sampan/state/sampan_app_state.dart';
 
 /// Core controller coordinating BLE Mesh, Sensor Fusion, Local Database,
 /// SoftAP Embedded Server, and GitHub Release Auto-Updater.
@@ -225,6 +53,7 @@ class SampanController extends StateNotifier<SampanAppState> {
 
   StreamSubscription<List<PeerModel>>? _peersSub;
   StreamSubscription<List<MessageModel>>? _messagesSub;
+  StreamSubscription<List<SpotModel>>? _spotsSub;
   StreamSubscription<void>? _hubStatsSub;
   Timer? _hardwareSyncTimer;
   String? _lastTriggeredSosId;
@@ -232,7 +61,7 @@ class SampanController extends StateNotifier<SampanAppState> {
 
   Future<void> _init() async {
     await _database.initialize();
-    await _database.seedDemoCaravanIfEmpty();
+    await _database.removeLegacyDemoData();
 
     if (!mounted) return;
     final List<PeerModel> initialPeers = _database.currentPeers;
@@ -242,19 +71,27 @@ class SampanController extends StateNotifier<SampanAppState> {
       identity: savedIdentity,
       peers: initialPeers,
       messages: _database.currentMessages,
+      spots: _database.currentSpots,
+      hotspotSsid: _database.hotspotSsid,
+      hotspotPassword: _database.hotspotPassword,
       selectedTargetPeerId: state.selectedTargetPeerId ??
           (initialPeers.isNotEmpty ? initialPeers.first.id : null),
     );
 
     if (savedIdentity != null) {
       await _nativeBridge.requestRuntimePermissions();
-      await _bleMeshService.broadcastOwnTelemetry(
-        identity: savedIdentity,
-        latitude: state.userLatitude,
-        longitude: state.userLongitude,
-        speedMetersPerSecond: 0.9,
-      );
+      await _broadcastOwnTelemetryIfLocated(savedIdentity);
     }
+
+    _spotsSub = _database.watchSpots().listen((List<SpotModel> spots) {
+      if (!mounted) return;
+      final bool targetStillExists = state.selectedTargetSpotId == null ||
+          spots.any((SpotModel s) => s.id == state.selectedTargetSpotId);
+      state = state.copyWith(
+        spots: spots,
+        clearSelectedTargetSpot: !targetStillExists,
+      );
+    });
 
     _peersSub = _database.watchPeers().listen((List<PeerModel> updatedPeers) {
       if (!mounted) return;
@@ -325,17 +162,55 @@ class SampanController extends StateNotifier<SampanAppState> {
 
     await _database.saveIdentity(profile);
     await _nativeBridge.requestRuntimePermissions();
-    await _bleMeshService.broadcastOwnTelemetry(
-      identity: profile,
-      latitude: state.userLatitude,
-      longitude: state.userLongitude,
-      speedMetersPerSecond: 0.9,
-    );
+    await _broadcastOwnTelemetryIfLocated(profile);
 
     if (mounted) {
       state = state.copyWith(identity: profile);
     }
     return profile;
+  }
+
+  /// Updates the user's name, look, and role while keeping the same
+  /// cryptographic identity (so friends still recognise this phone).
+  Future<IdentityProfile?> updateProfile({
+    required String displayName,
+    required String avatarIcon,
+    required int colorHex,
+    required String role,
+  }) async {
+    final IdentityProfile? current = state.identity;
+    if (current == null) return null;
+    final String trimmed = displayName.trim();
+    final IdentityProfile updated = IdentityProfile(
+      publicKeyHex: current.publicKeyHex,
+      privateSeedHex: current.privateSeedHex,
+      displayName: trimmed.isEmpty ? current.displayName : trimmed,
+      avatarIcon: avatarIcon,
+      colorHex: colorHex,
+      role: role,
+      createdAt: current.createdAt,
+    );
+    await _database.saveIdentity(updated);
+    await _broadcastOwnTelemetryIfLocated(updated);
+    if (mounted) {
+      state = state.copyWith(identity: updated);
+    }
+    return updated;
+  }
+
+  /// Only advertise our position once it is real, so friends never see a
+  /// made-up location on their radar.
+  Future<void> _broadcastOwnTelemetryIfLocated(
+    IdentityProfile identity, {
+    double speedMetersPerSecond = 0.0,
+  }) async {
+    if (!state.hasLocationFix) return;
+    await _bleMeshService.broadcastOwnTelemetry(
+      identity: identity,
+      latitude: state.userLatitude,
+      longitude: state.userLongitude,
+      speedMetersPerSecond: speedMetersPerSecond,
+    );
   }
 
   /// Toggles Sunlight High-Contrast Mode (`> 7:1` contrast ratio) or cycles
@@ -354,9 +229,24 @@ class SampanController extends StateNotifier<SampanAppState> {
 
   /// Selects a caravan companion to track on the 3D Compass Homing Dial.
   void selectTargetPeer(String peerId) {
-    state = state.copyWith(selectedTargetPeerId: peerId);
+    state = state.copyWith(
+      selectedTargetPeerId: peerId,
+      clearSelectedTargetSpot: true,
+    );
     _wasAlignedWithTarget = false;
     HapticFeedback.selectionClick();
+  }
+
+  /// Points the compass at a saved Spot (e.g. walk back to "Parking").
+  void selectTargetSpot(String spotId) {
+    state = state.copyWith(selectedTargetSpotId: spotId);
+    _wasAlignedWithTarget = false;
+    HapticFeedback.selectionClick();
+  }
+
+  void clearTargetSpot() {
+    state = state.copyWith(clearSelectedTargetSpot: true);
+    _wasAlignedWithTarget = false;
   }
 
   /// Switches chat scope between Caravan Group Ring (`null`) and 1-to-1 DM.
@@ -373,15 +263,16 @@ class SampanController extends StateNotifier<SampanAppState> {
   /// (Section 2.2).
   void updateCompassHeading(double headingDegrees) {
     final double normalized = GeoMath.normalizeDegrees(headingDegrees);
-    final PeerModel? target = state.selectedTargetPeer;
-    if (target != null &&
-        target.lastLatitude != null &&
-        target.lastLongitude != null) {
+    final SpotModel? spot = state.selectedTargetSpot;
+    final PeerModel? peer = spot == null ? state.selectedTargetPeer : null;
+    final double? targetLat = spot?.latitude ?? peer?.lastLatitude;
+    final double? targetLon = spot?.longitude ?? peer?.lastLongitude;
+    if (state.hasLocationFix && targetLat != null && targetLon != null) {
       final double bearing = GeoMath.calculateBearingDegrees(
         startLat: state.userLatitude,
         startLon: state.userLongitude,
-        endLat: target.lastLatitude!,
-        endLon: target.lastLongitude!,
+        endLat: targetLat,
+        endLon: targetLon,
       );
       final bool aligned = GeoMath.isAlignedWithTarget(
         targetBearingDeg: bearing,
@@ -402,78 +293,47 @@ class SampanController extends StateNotifier<SampanAppState> {
         await _nativeBridge.getHardwareSensorSnapshot();
     if (snapshot != null && mounted) {
       updateCompassHeading(snapshot.headingDegrees);
-      state = state.copyWith(
-        userLatitude: snapshot.latitude,
-        userLongitude: snapshot.longitude,
-        isCompassCalibrated: snapshot.isCompassCalibrated,
-      );
-      if (state.identity != null) {
-        await _bleMeshService.broadcastOwnTelemetry(
-          identity: state.identity!,
+      state = state.copyWith(isCompassCalibrated: snapshot.isCompassCalibrated);
+      if (snapshot.isHardwareGnss) {
+        updateUserLocation(
           latitude: snapshot.latitude,
           longitude: snapshot.longitude,
-          speedMetersPerSecond: snapshot.speedMetersPerSecond,
         );
+        final IdentityProfile? identity = state.identity;
+        if (identity != null) {
+          await _broadcastOwnTelemetryIfLocated(
+            identity,
+            speedMetersPerSecond: snapshot.speedMetersPerSecond,
+          );
+        }
       }
     }
     await _bleMeshService.pollAndIngestScannedFrames();
   }
 
-  /// Simulates a Virtual Leash breach (`RSSI < -85 dBm` for `> 45s`) on the
-  /// selected companion so users can verify the audible/haptic leash alarm
-  /// and frozen last-known GPS coordinates (Section 4, Module 1).
-  Future<void> simulateVirtualLeashDropOnSelectedPeer() async {
-    final PeerModel? target = state.selectedTargetPeer;
-    if (target == null) return;
-
-    final DateTime now = DateTime.now();
-    final DateTime weakStart = now.subtract(const Duration(seconds: 50));
-    final PeerModel seeded = target.copyWith(
-      weakSignalSince: weakStart,
-      rssiDbm: -92,
+  /// Applies a real position fix (from GNSS/network location).
+  void updateUserLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    if (!mounted) return;
+    state = state.copyWith(
+      userLatitude: latitude,
+      userLongitude: longitude,
+      hasLocationFix: true,
     );
-    await _database.upsertPeer(seeded);
-
-    // Encode a 28-byte BLE telemetry frame for the target companion with
-    // drifted coordinates while RSSI is -92 dBm (> 45s below -85 dBm):
-    // ingestRawTelemetryFrame detects the leash trip and freezes the
-    // companion's last-known GPS coordinates on the radar.
-    final Uint8List targetPacket = SampanWireProtocol.encodeTelemetryPacket(
-      TelemetryPacket(
-        isGuide: target.isGuide,
-        latitude: (target.lastLatitude ?? 21.4278) + 0.0040,
-        longitude: (target.lastLongitude ?? 91.9708) + 0.0040,
-        speedMetersPerSecond: 1.5,
-        truncatedKeyHex: target.id.length >= 28
-            ? target.id.substring(0, 28)
-            : target.id.padRight(28, '0'),
-      ),
-    );
-
-    await _bleMeshService.ingestRawTelemetryFrame(
-      rawBytes: targetPacket,
-      rssiDbm: -92,
-      receivedAt: now,
-    );
-
-    if (mounted) {
-      state = state.copyWith(peers: _database.currentPeers);
-    }
-    HapticFeedback.heavyImpact();
   }
 
-  /// Restores strong BLE signal (`-58 dBm`) for the selected peer and clears
-  /// the Virtual Leash alarm.
-  Future<void> restoreSelectedPeerSignal() async {
+  /// Clears a tripped Safety Leash alert for the selected person. The alarm
+  /// re-arms and fires again if their signal stays weak for another 45s.
+  Future<void> acknowledgeLeashAlert() async {
     final PeerModel? target = state.selectedTargetPeer;
     if (target == null) return;
-    final PeerModel restored = target.copyWith(
-      rssiDbm: -58,
+    final PeerModel cleared = target.copyWith(
       clearWeakSignalSince: true,
       isLeashFrozen: false,
-      lastSeen: DateTime.now(),
     );
-    await _database.upsertPeer(restored);
+    await _database.upsertPeer(cleared);
     if (mounted) {
       state = state.copyWith(peers: _database.currentPeers);
     }
@@ -525,35 +385,68 @@ class SampanController extends StateNotifier<SampanAppState> {
     }
   }
 
-  /// Broadcasts a one-tap Offline Landmark Ping (Section 4, Module 2).
-  Future<void> sendLandmarkPing(OfflineLandmark landmark) async {
+  /// Saves a Spot at the user's current position. Returns `null` while
+  /// there is no GPS fix yet (a spot needs a real location).
+  Future<SpotModel?> createSpot({
+    required String name,
+    required String emoji,
+  }) async {
+    if (!state.hasLocationFix) return null;
+    final String trimmed = name.trim();
+    final String safeName = trimmed.isEmpty
+        ? 'My spot'
+        : (trimmed.length > SpotModel.maxNameLength
+            ? trimmed.substring(0, SpotModel.maxNameLength)
+            : trimmed);
+    final DateTime now = DateTime.now();
+    final SpotModel spot = SpotModel(
+      id: 'spot-${now.microsecondsSinceEpoch}',
+      name: safeName,
+      emoji: emoji,
+      latitude: state.userLatitude,
+      longitude: state.userLongitude,
+      createdAt: now,
+    );
+    await _database.upsertSpot(spot);
+    if (mounted) {
+      state = state.copyWith(spots: _database.currentSpots);
+    }
+    HapticFeedback.mediumImpact();
+    return spot;
+  }
+
+  Future<void> deleteSpot(String spotId) async {
+    await _database.deleteSpot(spotId);
+    if (!mounted) return;
+    state = state.copyWith(
+      spots: _database.currentSpots,
+      clearSelectedTargetSpot: state.selectedTargetSpotId == spotId,
+    );
+  }
+
+  /// Shares a saved Spot with the group (or the open private chat).
+  Future<void> shareSpot(SpotModel spot) async {
     final IdentityProfile? sender = state.identity;
     final DateTime now = DateTime.now();
     final String coords =
-        '${landmark.latitude.toStringAsFixed(4)}, ${landmark.longitude.toStringAsFixed(4)}';
+        GeoMath.formatCoordinates(spot.latitude, spot.longitude);
     final MessageModel ping = MessageModel(
       id: 'ping-${now.microsecondsSinceEpoch}',
       senderId: sender?.publicKeyHex ?? kFallbackLocalPublicKeyHex,
-      senderName: sender?.displayName ?? 'Local Traveler',
+      senderName: sender?.displayName ?? 'Traveler',
       senderRole: sender?.role ?? 'traveler',
       recipientId: state.activeDmPeerId,
-      content: '${landmark.icon} Landmark Ping: At ${landmark.name} ($coords)',
+      content: '${spot.emoji} ${spot.name} · $coords',
       type: 'gps_ping',
-      latitude: landmark.latitude,
-      longitude: landmark.longitude,
-      landmarkName: landmark.name,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+      landmarkName: spot.name,
       timestamp: now,
       isDelivered: true,
       isEncrypted: true,
     );
 
     if (sender != null) {
-      await _bleMeshService.broadcastOwnTelemetry(
-        identity: sender,
-        latitude: landmark.latitude,
-        longitude: landmark.longitude,
-        speedMetersPerSecond: 0.8,
-      );
       await _bleMeshService.buildOutgoingMessageFrame(
         sender: sender,
         content: ping.content,
@@ -563,19 +456,30 @@ class SampanController extends StateNotifier<SampanAppState> {
     }
 
     _softApHubService.updateHostLocation(
-      latitude: landmark.latitude,
-      longitude: landmark.longitude,
-      landmark: landmark.name,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+      landmark: spot.name,
     );
     await _database.insertMessage(ping);
     if (mounted) {
-      state = state.copyWith(
-        userLatitude: landmark.latitude,
-        userLongitude: landmark.longitude,
-        messages: _database.currentMessages,
-      );
+      state = state.copyWith(messages: _database.currentMessages);
     }
     HapticFeedback.mediumImpact();
+  }
+
+  /// Saves the phone hotspot name & password used for the "join Wi-Fi" QR.
+  Future<void> saveHotspotCredentials({
+    required String ssid,
+    required String password,
+  }) async {
+    await _database.saveHotspotCredentials(ssid: ssid, password: password);
+    if (!mounted) return;
+    final SampanAppState cleared =
+        state.copyWith(clearHotspotCredentials: true);
+    state = cleared.copyWith(
+      hotspotSsid: _database.hotspotSsid,
+      hotspotPassword: _database.hotspotPassword,
+    );
   }
 
   /// Fires the Digital Megaphone (SOS) high-priority unencrypted broadcast
@@ -588,7 +492,7 @@ class SampanController extends StateNotifier<SampanAppState> {
         IdentityProfile(
           publicKeyHex: kFallbackLocalPublicKeyHex,
           privateSeedHex: kFallbackLocalPublicKeyHex,
-          displayName: 'Rahim',
+          displayName: 'Traveler',
           avatarIcon: '🛟',
           colorHex: 0xFFBA1A1A,
           role: 'traveler',
@@ -597,7 +501,8 @@ class SampanController extends StateNotifier<SampanAppState> {
 
     final PeerModel? guide = state.selectedTargetPeer;
     String telemetrySuffix = '';
-    if (guide != null &&
+    if (state.hasLocationFix &&
+        guide != null &&
         guide.lastLatitude != null &&
         guide.lastLongitude != null) {
       final double bearing = GeoMath.calculateBearingDegrees(
@@ -637,7 +542,7 @@ class SampanController extends StateNotifier<SampanAppState> {
       type: 'sos',
       latitude: state.userLatitude,
       longitude: state.userLongitude,
-      landmarkName: landmarkName ?? 'Laboni Point',
+      landmarkName: landmarkName,
       timestamp: now,
       isDelivered: true,
       isEncrypted: false,
@@ -672,10 +577,12 @@ class SampanController extends StateNotifier<SampanAppState> {
         );
       }
     } else {
-      _softApHubService.updateHostLocation(
-        latitude: state.userLatitude,
-        longitude: state.userLongitude,
-      );
+      if (state.hasLocationFix) {
+        _softApHubService.updateHostLocation(
+          latitude: state.userLatitude,
+          longitude: state.userLongitude,
+        );
+      }
       final int boundPort = await _softApHubService.startServer(port: port);
       final List<String> ips = await _nativeBridge.getLocalIpv4Addresses();
       if (mounted) {
@@ -817,6 +724,7 @@ class SampanController extends StateNotifier<SampanAppState> {
     _hardwareSyncTimer?.cancel();
     _peersSub?.cancel();
     _messagesSub?.cancel();
+    _spotsSub?.cancel();
     _hubStatsSub?.cancel();
     _softApHubService.stopServer();
     super.dispose();

@@ -11,16 +11,15 @@ class SosMegaphoneModal extends ConsumerStatefulWidget {
 }
 
 class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
-  final TextEditingController _textController = TextEditingController(
-    text: 'Separated near Laboni Point red lifeguard stand!',
-  );
-
   static const List<String> _presets = <String>[
-    'Separated near Laboni Point red lifeguard stand!',
-    'Waiting at Sugandha Beach main entrance.',
-    'Need help at my current location.',
-    'Battery low — staying at Kolatoli Circle.',
+    'I need help — please come to me.',
+    'I’m lost and separated from the group.',
+    'Medical help needed here.',
+    'Battery low — staying where I am.',
   ];
+
+  final TextEditingController _textController =
+      TextEditingController(text: _presets.first);
 
   @override
   void dispose() {
@@ -83,7 +82,7 @@ class _SosMegaphoneModalState extends ConsumerState<SosMegaphoneModal> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Alerts everyone nearby with your exact direction.',
+                          'Alerts everyone nearby, even with no signal.',
                           style: textTheme.bodySmall?.copyWith(
                             color: scheme.onError.withAlpha(230),
                           ),

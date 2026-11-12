@@ -12,11 +12,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * SOS Digital Megaphone & GPS ping endpoint (/send), telemetry (/status),
  * and local 25 MB/s P2P APK transfer endpoint (/download/sampan.apk).
  */
+/** Hemisphere-aware coordinate label (e.g. `33.8688°S, 151.2093°E`). */
+export function formatCoordinates(latitude, longitude, digits = 4) {
+  const lat = `${Math.abs(latitude).toFixed(digits)}°${latitude < 0 ? 'S' : 'N'}`;
+  const lon = `${Math.abs(longitude).toFixed(digits)}°${longitude < 0 ? 'W' : 'E'}`;
+  return `${lat}, ${lon}`;
+}
+
 export function createSampanSoftApHub(options = {}) {
-  const hostName = options.hostName || 'Tanvir Ahmed (Guide)';
-  const hostLandmark = options.hostLandmark || 'Laboni Point';
-  const hostLatitude = options.hostLatitude ?? 21.4272;
-  const hostLongitude = options.hostLongitude ?? 91.9702;
+  const hostName = options.hostName || 'Sampan host';
+  const hostLandmark = options.hostLandmark || 'Meeting point';
+  const hostLatitude = options.hostLatitude ?? 48.8566;
+  const hostLongitude = options.hostLongitude ?? 2.3522;
   const apkFilePath = options.apkFilePath || null;
 
   const messages = [
@@ -26,7 +33,7 @@ export function createSampanSoftApHub(options = {}) {
       sender: hostName,
       role: 'Host',
       type: 'text',
-      text: `Caravan check-in at ${hostLandmark} (${hostLatitude.toFixed(4)}°N, ${hostLongitude.toFixed(4)}°E). Connected via Sampan SoftAP Hub!`,
+      text: `Check-in at ${hostLandmark} (${formatCoordinates(hostLatitude, hostLongitude)}). Connected via the Sampan Hub!`,
       time: '17:00',
     },
   ];
@@ -50,7 +57,7 @@ export function createSampanSoftApHub(options = {}) {
   }
 
   function getPortalHtml() {
-    const coords = `${hostLatitude.toFixed(4)}°N, ${hostLongitude.toFixed(4)}°E`;
+    const coords = formatCoordinates(hostLatitude, hostLongitude);
     const safeHostHtml = escapeServerHtml(hostName);
     const safeLandmarkHtml = escapeServerHtml(hostLandmark);
     const safeCheckinJsLiteral = JSON.stringify(`📍 Checked in near ${hostLandmark}`);
@@ -59,7 +66,7 @@ export function createSampanSoftApHub(options = {}) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sampan (সাম্পান) — Zero-Install Beach & Trail Hub</title>
+  <title>Sampan (সাম্পান) — Offline Group Hub</title>
   <style>
     :root {
       --ocean-deep: #6755EF;
@@ -103,12 +110,12 @@ export function createSampanSoftApHub(options = {}) {
   <header>
     <div>
       <div class="brand-title">⛵ Sampan (সাম্পান)</div>
-      <div class="brand-sub">Zero-Cloud SoftAP Rendezvous Portal</div>
+      <div class="brand-sub">Group chat that works without internet</div>
     </div>
     <div class="pill">📡 Hotspot Connected</div>
   </header>
   <a class="apk-banner" href="/download/sampan.apk">
-    <span>⚡ Download Native Sampan App (Fast Local Transfer • No Internet Needed)</span>
+    <span>⚡ Get the Sampan app — fast local download, no internet needed</span>
     <span class="apk-btn">Get APK</span>
   </a>
   <div class="host-bar">
@@ -117,15 +124,15 @@ export function createSampanSoftApHub(options = {}) {
   </div>
   <div id="setup-bar">
     <select id="role"><option value="Guest" selected>Traveler</option><option value="Host">Guide</option></select>
-    <input type="text" id="username" placeholder="Your Name (e.g., Rahim)">
+    <input type="text" id="username" placeholder="Your name">
   </div>
   <div id="action-bar">
-    <button class="sos-btn" onclick="sendMegaphone()">🚨 SOS Digital Megaphone</button>
-    <button class="gps-btn" onclick="sendLocation()">📍 Share Offline GPS</button>
+    <button class="sos-btn" onclick="sendMegaphone()">🚨 SOS</button>
+    <button class="gps-btn" onclick="sendLocation()">📍 Share my location</button>
   </div>
   <div id="chat-container"></div>
   <footer>
-    <input type="text" id="msg-input" placeholder="Message caravan offline..." onkeydown="if(event.key==='Enter') sendText()">
+    <input type="text" id="msg-input" placeholder="Message the group..." onkeydown="if(event.key==='Enter') sendText()">
     <button onclick="sendText()">Send</button>
   </footer>
   <script>
@@ -179,7 +186,7 @@ export function createSampanSoftApHub(options = {}) {
     }
 
     function sendMegaphone() {
-      const text = prompt('🚨 Broadcast Emergency SOS Megaphone to Caravan:', 'Separated near Laboni Point red lifeguard stand! Please ping bearing.');
+      const text = prompt('🚨 Send an SOS to everyone nearby:', 'I need help — please come to me.');
       if (text) postMessage({ type: 'sos', text });
     }
 
@@ -196,7 +203,7 @@ export function createSampanSoftApHub(options = {}) {
             type: 'gps_ping',
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
-            text: '📍 Offline Satellite GPS: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
+            text: '📍 My location: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
           });
         },
         () => postMessage({ type: 'gps_ping', text: ${safeCheckinJsLiteral} }),
@@ -250,7 +257,7 @@ export function createSampanSoftApHub(options = {}) {
       res.end(
         JSON.stringify({
           app: 'Sampan',
-          ssid: 'Sampan-Beach-Hub-01',
+          ssid: options.hotspotSsid || null,
           hostName,
           landmark: hostLandmark,
           hostLatitude,

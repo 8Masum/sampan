@@ -451,8 +451,8 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
 
     @SuppressLint("MissingPermission")
     private fun readSensorAndGnssSnapshot(): Map<String, Any> {
-        var lat = 21.4272
-        var lon = 91.9702
+        var lat = 0.0
+        var lon = 0.0
         var speed = 0.0
         var hasFix = false
         try {

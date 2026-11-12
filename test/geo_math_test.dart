@@ -146,5 +146,23 @@ void main() {
       expect(at46s.isTripped, isTrue);
       expect(at46s.weakDurationSeconds, equals(46));
     });
+    test('formatCoordinates labels every hemisphere correctly', () {
+      expect(
+        GeoMath.formatCoordinates(23.81035, 90.41252),
+        equals('23.8104°N, 90.4125°E'),
+      );
+      expect(
+        GeoMath.formatCoordinates(-33.8688, 151.2093),
+        equals('33.8688°S, 151.2093°E'),
+      );
+      expect(
+        GeoMath.formatCoordinates(40.7128, -74.006),
+        equals('40.7128°N, 74.0060°W'),
+      );
+      expect(
+        GeoMath.formatCoordinates(-22.9068, -43.1729, fractionDigits: 2),
+        equals('22.91°S, 43.17°W'),
+      );
+    });
   });
 }

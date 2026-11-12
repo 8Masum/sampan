@@ -9,7 +9,7 @@ class SampanConstants {
   static const String appName = 'Sampan';
   static const String appNameBengali = 'সাম্পান';
   static const String tagline = 'Find your people, even offline.';
-  static const String appVersion = '2.0.1';
+  static const String appVersion = '3.0.0';
   static const String logoAssetPath = 'Logo/Sampan.png';
 
   /// GitHub Release OTA Auto-Update Endpoints.
@@ -52,18 +52,19 @@ class SampanConstants {
 
   /// Zero-Install SoftAP Hotspot Hub (Section 4.3).
   static const int softApDefaultPort = 8080;
-  static const String softApDefaultSsid = 'Sampan-Beach-Hub-01';
 
   /// Onboarding Avatars & Identity Palette (Section 5.1).
   static const List<String> avatarIcons = <String>[
     '⛵',
-    '🏄',
-    '🐬',
-    '🌴',
     '🧭',
+    '🎒',
+    '🏔️',
+    '🚲',
+    '🏄',
+    '🏕️',
+    '🌴',
+    '🐬',
     '🛟',
-    '⚓',
-    '🐚',
   ];
 
   static const List<int> identityColorHexes = <int>[

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:sampan/core/constants/protocol_constants.dart';
+import 'package:sampan/core/math/geo_math.dart';
 import 'package:sampan/data/database/local_database.dart';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
@@ -32,9 +33,10 @@ class SoftApHubService {
       StreamController<void>.broadcast();
 
   int _apkDownloadsCount = 0;
-  double _hostLatitude = 21.4272;
-  double _hostLongitude = 91.9702;
-  String _hostLandmark = 'Laboni Point';
+  double _hostLatitude = 0.0;
+  double _hostLongitude = 0.0;
+  bool _hasHostLocation = false;
+  String? _hostLandmark;
 
   bool get isRunning => _server != null;
   int get activePort => _server?.port ?? SampanConstants.softApDefaultPort;
@@ -55,6 +57,7 @@ class SoftApHubService {
   }) {
     _hostLatitude = latitude;
     _hostLongitude = longitude;
+    _hasHostLocation = true;
     if (landmark != null && landmark.isNotEmpty) {
       _hostLandmark = landmark;
     }
@@ -160,8 +163,8 @@ class SoftApHubService {
       final IdentityProfile? host = _database.identity;
       final Map<String, dynamic> status = <String, dynamic>{
         'app': SampanConstants.appName,
-        'ssid': SampanConstants.softApDefaultSsid,
-        'hostName': host?.displayName ?? 'Tour Guide',
+        'ssid': _database.hotspotSsid,
+        'hostName': host?.displayName ?? 'Sampan host',
         'hostRole': host?.role ?? 'guide',
         'hostLatitude': _hostLatitude,
         'hostLongitude': _hostLongitude,
@@ -230,7 +233,7 @@ class SoftApHubService {
         final String resolvedSenderId =
             (data['senderId'] as String?) ?? 'softap-guest';
         final String resolvedSenderName =
-            senderName.isEmpty ? 'Beach Guest' : senderName;
+            senderName.isEmpty ? 'Guest' : senderName;
         final String rawRole =
             (data['role'] as String?)?.toLowerCase() ?? 'traveler';
         final String resolvedRole =
@@ -364,23 +367,29 @@ class SoftApHubService {
   }
 
   /// Generates the Zero-Install Responsive Web Client HTML (Section 4, Module 3)
-  /// styled with Sampan's Playful Material Design 3 Coastal Maritime Palette.
+  /// styled with Sampan's Material Design 3 violet & lime palette.
   String buildZeroInstallPortalHtml() {
     final IdentityProfile? host = _database.identity;
-    final String hostName =
-        _escapeHtml(host?.displayName ?? 'Tanvir Ahmed (Guide)');
-    final String safeLandmarkHtml = _escapeHtml(_hostLandmark);
-    final String safeCheckinJsLiteral =
-        jsonEncode('📍 Checked in near $_hostLandmark');
-    final String coords =
-        '${_hostLatitude.toStringAsFixed(4)}°N, ${_hostLongitude.toStringAsFixed(4)}°E';
+    final String hostName = _escapeHtml(host?.displayName ?? 'Sampan host');
+    final String? landmark = _hostLandmark;
+    final String coords = _hasHostLocation
+        ? GeoMath.formatCoordinates(_hostLatitude, _hostLongitude)
+        : '';
+    final String hostLocationHtml = landmark != null
+        ? '📍 ${_escapeHtml(landmark)}${coords.isEmpty ? '' : ' ($coords)'}'
+        : (coords.isEmpty ? '' : '📍 $coords');
+    final String safeCheckinJsLiteral = jsonEncode(
+      landmark != null
+          ? '📍 Checked in near $landmark'
+          : '📍 Checked in with $hostName',
+    );
 
     return '''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sampan (সাম্পান) — Zero-Install Beach & Trail Hub</title>
+  <title>Sampan (সাম্পান) — Offline Group Hub</title>
   <style>
     :root {
       --ocean-deep: #6755EF;
@@ -424,19 +433,19 @@ class SoftApHubService {
   <header>
     <div>
       <div class="brand-title">⛵ Sampan (সাম্পান)</div>
-      <div class="brand-sub">Zero-Cloud SoftAP Rendezvous Portal</div>
+      <div class="brand-sub">Group chat that works without internet</div>
     </div>
-    <div class="pill">📡 Hotspot Connected</div>
+    <div class="pill">📡 Connected</div>
   </header>
 
   <a class="apk-banner" href="/download/sampan.apk">
-    <span>⚡ Download Native Sampan App (Fast Local Transfer • No Internet Needed)</span>
+    <span>⚡ Get the Sampan app — fast local download, no internet needed</span>
     <span class="apk-btn">Get APK</span>
   </a>
 
   <div class="host-bar">
     <span>🧭 Host: $hostName</span>
-    <span>📍 $safeLandmarkHtml ($coords)</span>
+    <span>$hostLocationHtml</span>
   </div>
 
   <div id="setup-bar">
@@ -444,18 +453,18 @@ class SoftApHubService {
       <option value="Guest" selected>Traveler</option>
       <option value="Host">Guide</option>
     </select>
-    <input type="text" id="username" placeholder="Your Name (e.g., Rahim)">
+    <input type="text" id="username" placeholder="Your name">
   </div>
 
   <div id="action-bar">
-    <button class="sos-btn" onclick="sendMegaphone()">🚨 SOS Digital Megaphone</button>
-    <button class="gps-btn" onclick="sendLocation()">📍 Share Offline GPS</button>
+    <button class="sos-btn" onclick="sendMegaphone()">🚨 SOS</button>
+    <button class="gps-btn" onclick="sendLocation()">📍 Share my location</button>
   </div>
 
   <div id="chat-container"></div>
 
   <footer>
-    <input type="text" id="msg-input" placeholder="Message caravan offline..." onkeydown="if(event.key==='Enter') sendText()">
+    <input type="text" id="msg-input" placeholder="Message the group..." onkeydown="if(event.key==='Enter') sendText()">
     <button onclick="sendText()">Send</button>
   </footer>
 
@@ -510,7 +519,7 @@ class SoftApHubService {
     }
 
     function sendMegaphone() {
-      const text = prompt('🚨 Broadcast Emergency SOS Megaphone to Caravan:', 'Separated near Laboni Point red lifeguard stand! Please ping bearing.');
+      const text = prompt('🚨 Send an SOS to everyone nearby:', 'I need help — please come to me.');
       if (text) postMessage({ type: 'sos', text });
     }
 
@@ -527,7 +536,7 @@ class SoftApHubService {
             type: 'gps_ping',
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
-            text: '📍 Offline Satellite GPS: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
+            text: '📍 My location: ' + lat + ', ' + lon + ' (±' + Math.round(pos.coords.accuracy) + 'm)'
           });
         },
         () => postMessage({ type: 'gps_ping', text: $safeCheckinJsLiteral }),

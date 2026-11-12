@@ -1,521 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sampan/core/constants/landmarks.dart';
 import 'package:sampan/core/constants/protocol_constants.dart';
-import 'package:sampan/core/math/geo_math.dart';
-import 'package:sampan/core/protocol/wire_protocol.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
-import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
-import 'package:sampan/data/models/peer_model.dart';
-import 'package:sampan/data/services/app_update_service.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/chat/caravan_chat_tab.dart';
+import 'package:sampan/ui/home/home_tab_provider.dart';
+import 'package:sampan/ui/home/sheets/profile_sheet.dart';
+import 'package:sampan/ui/home/sheets/signal_sheet.dart';
+import 'package:sampan/ui/home/sheets/spots_sheet.dart';
+import 'package:sampan/ui/home/sheets/update_sheet.dart';
 import 'package:sampan/ui/hub/softap_hub_tab.dart';
 import 'package:sampan/ui/radar/compass_radar_tab.dart';
 
-/// Minimalist Material Design 3 Expressive Home Shell for Sampan.
-class HomeShell extends ConsumerStatefulWidget {
+/// Minimalist Material Design 3 Expressive home shell: app bar, alert
+/// banners, and the Radar / Chat / Hub tabs.
+class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
 
   @override
-  ConsumerState<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends ConsumerState<HomeShell> {
-  int _selectedIndex = 0;
-
-  void _openCaravanRosterSheet(BuildContext context, SampanAppState state) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext ctx) {
-        final ColorScheme scheme = Theme.of(ctx).colorScheme;
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.56,
-          minChildSize: 0.35,
-          maxChildSize: 0.88,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
-              children: <Widget>[
-                Text(
-                  'People Nearby (${state.peers.length})',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tap anyone to point your compass toward them.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                ...state.peers.map((PeerModel peer) {
-                  final double dist = (peer.lastLatitude != null &&
-                          peer.lastLongitude != null)
-                      ? GeoMath.calculateHaversineDistanceMeters(
-                          startLat: state.userLatitude,
-                          startLon: state.userLongitude,
-                          endLat: peer.lastLatitude!,
-                          endLon: peer.lastLongitude!,
-                        )
-                      : 0.0;
-                  final double bearing = (peer.lastLatitude != null &&
-                          peer.lastLongitude != null)
-                      ? GeoMath.calculateBearingDegrees(
-                          startLat: state.userLatitude,
-                          startLon: state.userLongitude,
-                          endLat: peer.lastLatitude!,
-                          endLon: peer.lastLongitude!,
-                        )
-                      : 0.0;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      leading: CircleAvatar(
-                        radius: 22,
-                        backgroundColor: Color(peer.colorHex),
-                        child: Text(
-                          peer.avatarIcon,
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                      ),
-                      title: Text(
-                        peer.displayName,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      subtitle: Text(
-                        '${peer.isGuide ? 'Guide' : 'Traveler'} · '
-                        '${GeoMath.formatDistance(dist)} · '
-                        '${GeoMath.cardinalDirectionFromBearing(bearing)}',
-                      ),
-                      trailing: IconButton.filledTonal(
-                        tooltip: 'Message',
-                        icon: const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          ref
-                              .read(sampanControllerProvider.notifier)
-                              .setActiveDmPeer(peer.id);
-                          Navigator.of(ctx).pop();
-                          setState(() => _selectedIndex = 1);
-                        },
-                      ),
-                      onTap: () {
-                        ref
-                            .read(sampanControllerProvider.notifier)
-                            .selectTargetPeer(peer.id);
-                        Navigator.of(ctx).pop();
-                        setState(() => _selectedIndex = 0);
-                      },
-                    ),
-                  );
-                }),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _openSpatioTemporalNoticeboardSheet(
-    BuildContext context,
-    SampanAppState state,
-  ) {
-    final List<MessageModel> notices = state.messages
-        .where((MessageModel m) => m.isSos || m.isGpsPing || !m.isDirectMessage)
-        .toList()
-        .reversed
-        .toList(growable: false);
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext ctx) {
-        final ColorScheme scheme = Theme.of(ctx).colorScheme;
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.60,
-          minChildSize: 0.38,
-          maxChildSize: 0.90,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
-              children: <Widget>[
-                Text(
-                  'Group Pins & Alerts',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Share a meeting spot with one tap.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: OfflineLandmarks.coxsBazarAndCoastal
-                      .map((OfflineLandmark landmark) {
-                    return ActionChip(
-                      avatar: Text(landmark.icon),
-                      label: Text(
-                        landmark.name,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      onPressed: () {
-                        ref
-                            .read(sampanControllerProvider.notifier)
-                            .sendLandmarkPing(landmark);
-                        Navigator.of(ctx).pop();
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                ...notices.map((MessageModel item) {
-                  final String hh =
-                      item.timestamp.hour.toString().padLeft(2, '0');
-                  final String mm =
-                      item.timestamp.minute.toString().padLeft(2, '0');
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: item.isSos
-                          ? scheme.errorContainer
-                          : scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: ListTile(
-                      leading: Icon(
-                        item.isSos
-                            ? Icons.warning_amber_rounded
-                            : (item.isGpsPing
-                                ? Icons.place_rounded
-                                : Icons.push_pin_rounded),
-                        color: item.isSos ? scheme.error : scheme.primary,
-                      ),
-                      title: Text(
-                        '${item.senderName} · $hh:$mm',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                      subtitle: Text(item.content),
-                    ),
-                  );
-                }),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _openGpsAndProtocolInspectorSheet(
-    BuildContext context,
-    SampanAppState state,
-  ) {
-    final IdentityProfile? id = state.identity;
-    final TelemetryPacket samplePacket = TelemetryPacket(
-      isGuide: id?.isGuide ?? true,
-      latitude: state.userLatitude,
-      longitude: state.userLongitude,
-      speedMetersPerSecond: 1.1,
-      truncatedKeyHex: id?.truncated14ByteHex ?? '7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-    );
-    final String hexWire = SampanWireProtocol.bytesToHex(
-      SampanWireProtocol.encodeTelemetryPacket(samplePacket),
-    );
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext ctx) {
-        final ColorScheme scheme = Theme.of(ctx).colorScheme;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'My Offline Signal',
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Your phone is broadcasting an offline beacon to nearby friends.',
-                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      id?.fingerprintUri ?? 'sampan:ed25519:uninitialized',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'GPS: ${state.userLatitude.toStringAsFixed(5)}°N, '
-                      '${state.userLongitude.toStringAsFixed(5)}°E',
-                      style: Theme.of(ctx).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 10),
-                    SelectableText(
-                      hexWire,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _openAppUpdateSheet(BuildContext context) {
-    final SampanAppState current = ref.read(sampanControllerProvider);
-    if (current.availableUpdate == null && !current.isCheckingForUpdate) {
-      ref.read(sampanControllerProvider.notifier).checkForAppUpdate();
-    }
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) {
-        return Consumer(
-          builder: (BuildContext ctx, WidgetRef sheetRef, Widget? _) {
-            final SampanAppState liveState =
-                sheetRef.watch(sampanControllerProvider);
-            final SampanController notifier =
-                sheetRef.read(sampanControllerProvider.notifier);
-            final ColorScheme scheme = Theme.of(ctx).colorScheme;
-            final ReleaseUpdateInfo? release = liveState.availableUpdate;
-            final bool hasUpdate = liveState.hasAvailableUpdate;
-            final int pct =
-                (liveState.updateDownloadProgress * 100).round().clamp(0, 100);
-
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          hasUpdate
-                              ? Icons.system_update_rounded
-                              : Icons.verified_rounded,
-                          color: scheme.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'GitHub Release Auto-Update',
-                            style: Theme.of(ctx)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Installed: v${liveState.installedVersion}',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            release != null
-                                ? 'Latest: ${release.tagName} (${release.formattedSize})'
-                                : '${SampanConstants.githubOwner}/${SampanConstants.githubRepo}',
-                            style: Theme.of(ctx).textTheme.bodySmall,
-                          ),
-                          if (liveState.updateStatusMessage != null) ...<Widget>[
-                            const SizedBox(height: 8),
-                            Text(
-                              liveState.updateStatusMessage!,
-                              key: const ValueKey<String>(
-                                'update-status-message-text',
-                              ),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                                color: scheme.primary,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (release != null &&
-                        release.releaseNotes.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 12),
-                      Text(
-                        release.releaseTitle,
-                        style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 110),
-                        child: SingleChildScrollView(
-                          child: Text(
-                            release.releaseNotes,
-                            style: Theme.of(ctx).textTheme.bodySmall,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (liveState.isDownloadingUpdate) ...<Widget>[
-                      const SizedBox(height: 14),
-                      LinearProgressIndicator(
-                        value: liveState.updateDownloadProgress > 0
-                            ? liveState.updateDownloadProgress
-                            : null,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Downloading... $pct%',
-                        style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const ValueKey<String>('check-for-update-btn'),
-                            onPressed: (liveState.isCheckingForUpdate ||
-                                    liveState.isDownloadingUpdate)
-                                ? null
-                                : () => notifier.checkForAppUpdate(
-                                      silent: false,
-                                    ),
-                            icon: liveState.isCheckingForUpdate
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.refresh_rounded, size: 18),
-                            label: Text(
-                              liveState.isCheckingForUpdate
-                                  ? 'Checking...'
-                                  : 'Check',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            key: const ValueKey<String>(
-                              'download-install-update-btn',
-                            ),
-                            onPressed: liveState.isDownloadingUpdate
-                                ? null
-                                : notifier.downloadAndInstallAppUpdate,
-                            icon: const Icon(
-                              Icons.download_for_offline_rounded,
-                              size: 18,
-                            ),
-                            label: Text(
-                              hasUpdate
-                                  ? 'Update (${release!.tagName})'
-                                  : 'Reinstall',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final SampanAppState state = ref.watch(sampanControllerProvider);
     final SampanController controller =
         ref.read(sampanControllerProvider.notifier);
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final MessageModel? sosAlert = state.activeSosAlert;
+    final int selectedIndex = ref.watch(homeTabIndexProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -554,16 +62,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ),
         actions: <Widget>[
           IconButton(
-            key: const ValueKey<String>('open-noticeboard-btn'),
-            tooltip: 'Group Pins',
-            onPressed: () =>
-                _openSpatioTemporalNoticeboardSheet(context, state),
+            key: const ValueKey<String>('open-spots-btn'),
+            tooltip: 'Spots',
+            onPressed: () => showSpotsSheet(context),
             icon: const Icon(Icons.push_pin_outlined, size: 22),
           ),
           IconButton(
             key: const ValueKey<String>('open-update-sheet-btn'),
             tooltip: 'Updates',
-            onPressed: () => _openAppUpdateSheet(context),
+            onPressed: () => showAppUpdateSheet(context, ref),
             icon: Badge(
               isLabelVisible: state.hasAvailableUpdate,
               backgroundColor: SampanTheme.brandViolet,
@@ -572,152 +79,37 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ),
           _HomeOverflowMenu(
             state: state,
+            onEditProfile: () => showProfileSheet(context),
             onToggleSunlight: controller.toggleSunlightHighContrast,
             onToggleDarkMode: () => controller.setVisualMode(
               state.visualMode == SampanVisualMode.dark
                   ? SampanVisualMode.light
                   : SampanVisualMode.dark,
             ),
-            onOpenSignalInfo: () =>
-                _openGpsAndProtocolInspectorSheet(context, state),
+            onOpenSignalInfo: () => showSignalSheet(context, state),
           ),
           const SizedBox(width: 4),
         ],
       ),
       body: Column(
         children: <Widget>[
-          // Minimal Status Pills Strip
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: <Widget>[
-                  _FloatingStatusPill(
-                    key: const ValueKey<String>('pill-ble-peers'),
-                    label: '${state.peers.length} nearby',
-                    isHighlighted: true,
-                    onTap: () => _openCaravanRosterSheet(context, state),
-                  ),
-                  const SizedBox(width: 8),
-                  _FloatingStatusPill(
-                    key: const ValueKey<String>('pill-hotspot-status'),
-                    label: state.isSoftApRunning
-                        ? 'Hub live · ${state.softApClientsCount}'
-                        : 'Host hub',
-                    isHighlighted: state.isSoftApRunning,
-                    onTap: () => setState(() => _selectedIndex = 2),
-                  ),
-                  const SizedBox(width: 8),
-                  _FloatingStatusPill(
-                    key: const ValueKey<String>('pill-compass-status'),
-                    label: state.isCompassCalibrated
-                        ? 'Compass ready'
-                        : 'Calibrate',
-                    onTap: () => setState(() => _selectedIndex = 0),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Update Available Pill Banner
           if (state.hasAvailableUpdate && !state.isUpdateBannerDismissed)
-            Container(
-              key: const ValueKey<String>('update-available-banner'),
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: SampanTheme.brandLime,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: SampanTheme.violet900,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Sampan ${state.availableUpdate!.tagName} is ready',
-                      style: const TextStyle(
-                        color: SampanTheme.violet900,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    key: const ValueKey<String>('banner-install-update-btn'),
-                    onPressed: () {
-                      _openAppUpdateSheet(context);
-                      controller.downloadAndInstallAppUpdate();
-                    },
-                    child: const Text(
-                      'Update',
-                      style: TextStyle(
-                        color: SampanTheme.violet900,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    key: const ValueKey<String>('dismiss-update-banner-btn'),
-                    onPressed: controller.dismissUpdateBanner,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: SampanTheme.violet900,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
+            _UpdateBanner(
+              tagName: state.availableUpdate?.tagName ?? '',
+              onUpdate: () {
+                showAppUpdateSheet(context, ref);
+                controller.downloadAndInstallAppUpdate();
+              },
+              onDismiss: controller.dismissUpdateBanner,
             ),
-
-          // Active SOS Emergency Banner
-          if (sosAlert != null)
-            Container(
-              key: const ValueKey<String>('active-sos-alert-banner'),
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: scheme.error,
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(Icons.warning_amber_rounded, color: scheme.onError),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      sosAlert.content,
-                      style: TextStyle(
-                        color: scheme.onError,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    key: const ValueKey<String>('dismiss-sos-alert-btn'),
-                    onPressed: controller.dismissActiveSosAlert,
-                    icon: Icon(Icons.close_rounded, color: scheme.onError),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
+          if (state.activeSosAlert != null)
+            _SosBanner(
+              alert: state.activeSosAlert!,
+              onDismiss: controller.dismissActiveSosAlert,
             ),
-
-          // Active Tab Body
           Expanded(
             child: IndexedStack(
-              index: _selectedIndex,
+              index: selectedIndex,
               children: const <Widget>[
                 CompassRadarTab(),
                 CaravanChatTab(),
@@ -728,9 +120,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: selectedIndex,
         onDestinationSelected: (int index) {
-          setState(() => _selectedIndex = index);
+          ref.read(homeTabIndexProvider.notifier).state = index;
         },
         destinations: const <NavigationDestination>[
           NavigationDestination(
@@ -757,19 +149,131 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 }
 
-enum _OverflowAction { sunlight, darkMode, signalInfo }
+class _UpdateBanner extends StatelessWidget {
+  const _UpdateBanner({
+    required this.tagName,
+    required this.onUpdate,
+    required this.onDismiss,
+  });
 
-/// Secondary AppBar actions tucked into one overflow menu to keep the
-/// top bar minimal.
+  final String tagName;
+  final VoidCallback onUpdate;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey<String>('update-available-banner'),
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: SampanTheme.brandLime,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Icon(
+            Icons.auto_awesome_rounded,
+            color: SampanTheme.violet900,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Sampan $tagName is ready',
+              style: const TextStyle(
+                color: SampanTheme.violet900,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          TextButton(
+            key: const ValueKey<String>('banner-install-update-btn'),
+            onPressed: onUpdate,
+            child: const Text(
+              'Update',
+              style: TextStyle(
+                color: SampanTheme.violet900,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            key: const ValueKey<String>('dismiss-update-banner-btn'),
+            onPressed: onDismiss,
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: SampanTheme.violet900,
+            ),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SosBanner extends StatelessWidget {
+  const _SosBanner({required this.alert, required this.onDismiss});
+
+  final MessageModel alert;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey<String>('active-sos-alert-banner'),
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.error,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.warning_amber_rounded, color: scheme.onError),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              alert.content,
+              style: TextStyle(
+                color: scheme.onError,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          IconButton(
+            key: const ValueKey<String>('dismiss-sos-alert-btn'),
+            onPressed: onDismiss,
+            icon: Icon(Icons.close_rounded, color: scheme.onError),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _OverflowAction { profile, sunlight, darkMode, signalInfo }
+
+/// Secondary actions tucked into one overflow menu to keep the top bar calm.
 class _HomeOverflowMenu extends StatelessWidget {
   const _HomeOverflowMenu({
     required this.state,
+    required this.onEditProfile,
     required this.onToggleSunlight,
     required this.onToggleDarkMode,
     required this.onOpenSignalInfo,
   });
 
   final SampanAppState state;
+  final VoidCallback onEditProfile;
   final VoidCallback onToggleSunlight;
   final VoidCallback onToggleDarkMode;
   final VoidCallback onOpenSignalInfo;
@@ -784,6 +288,8 @@ class _HomeOverflowMenu extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onSelected: (_OverflowAction action) {
         switch (action) {
+          case _OverflowAction.profile:
+            onEditProfile();
           case _OverflowAction.sunlight:
             onToggleSunlight();
           case _OverflowAction.darkMode:
@@ -793,6 +299,15 @@ class _HomeOverflowMenu extends StatelessWidget {
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<_OverflowAction>>[
+        const PopupMenuItem<_OverflowAction>(
+          key: ValueKey<String>('open-profile-menu-item'),
+          value: _OverflowAction.profile,
+          child: _MenuRow(
+            icon: Icons.person_outline_rounded,
+            label: 'Edit profile',
+          ),
+        ),
+        const PopupMenuDivider(),
         CheckedPopupMenuItem<_OverflowAction>(
           key: const ValueKey<String>('toggle-sunlight-mode-btn'),
           value: _OverflowAction.sunlight,
@@ -809,71 +324,27 @@ class _HomeOverflowMenu extends StatelessWidget {
         const PopupMenuItem<_OverflowAction>(
           key: ValueKey<String>('open-protocol-inspector-btn'),
           value: _OverflowAction.signalInfo,
-          child: Row(
-            children: <Widget>[
-              Icon(Icons.sensors_rounded, size: 20),
-              SizedBox(width: 12),
-              Flexible(child: Text('Signal info')),
-            ],
-          ),
+          child: _MenuRow(icon: Icons.sensors_rounded, label: 'Signal info'),
         ),
       ],
     );
   }
 }
 
-class _FloatingStatusPill extends StatelessWidget {
-  const _FloatingStatusPill({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.isHighlighted = false,
-  });
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.icon, required this.label});
 
+  final IconData icon;
   final String label;
-  final VoidCallback onTap;
-  final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isHighlighted
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (isHighlighted) ...<Widget>[
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: isHighlighted
-                        ? scheme.onPrimaryContainer
-                        : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ),
-      ),
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Flexible(child: Text(label)),
+      ],
     );
   }
 }

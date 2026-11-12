@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 108dp adaptive layer: a 14dp inset keeps the boat and wordmark inside
+     every launcher mask while the logo's violet edges blend into the backdrop.
+     sampan_logo.png is copied from Logo/Sampan.png by CI. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/sampan_logo"
+    android:inset="14dp" />

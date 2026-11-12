@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sampan Electric Violet: splash background and adaptive icon backdrop -->
+    <color name="sampan_violet">#6755EF</color>
+    <color name="ic_launcher_background">#6755EF</color>
+</resources>

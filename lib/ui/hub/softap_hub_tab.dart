@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sampan/core/constants/protocol_constants.dart';
+import 'package:sampan/core/net/join_qr_payload.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/state/sampan_providers.dart';
+import 'package:sampan/ui/hub/join_qr_card.dart';
 
-/// Module 3: Minimalist Material Design 3 Expressive SoftAP Hotspot Hub.
+/// Module 3: Browser Hub — friends without the app join over the host's
+/// hotspot by scanning a QR, then chat in any browser or grab the app.
 class SoftApHubTab extends ConsumerWidget {
   const SoftApHubTab({super.key});
 
@@ -14,285 +16,248 @@ class SoftApHubTab extends ConsumerWidget {
     final SampanAppState state = ref.watch(sampanControllerProvider);
     final SampanController controller =
         ref.read(sampanControllerProvider.notifier);
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
     final String primaryIp =
         state.softApIps.isNotEmpty ? state.softApIps.first : '192.168.43.1';
-    final String portalUrl = 'http://$primaryIp:${state.softApPort}';
+    final String hubUrl =
+        JoinQrPayload.hubUrl(ip: primaryIp, port: state.softApPort);
     final bool isRunning = state.isSoftApRunning;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: <Widget>[
-        // 1. M3 Expressive Hero Hub Card (inspired by Screenshot 2 "Payground" card)
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isRunning
-                ? SampanTheme.brandViolet
-                : scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(SampanTheme.radiusLg),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      isRunning ? 'Hotspot Hub Live' : 'Browser Hub',
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: isRunning
-                            ? SampanTheme.brandLime
-                            : scheme.onPrimaryContainer.withAlpha(200),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isRunning
-                            ? Colors.white.withAlpha(30)
-                            : scheme.surface.withAlpha(180),
-                        borderRadius:
-                            BorderRadius.circular(SampanTheme.radiusPill),
-                      ),
-                      child: Text(
-                        SampanConstants.softApDefaultSsid,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: isRunning
-                              ? Colors.white
-                              : scheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+        _HubHeroCard(
+          isRunning: isRunning,
+          address: '$primaryIp:${state.softApPort}',
+          onToggle: () => controller.toggleSoftApHub(),
+          onCopy: () {
+            Clipboard.setData(ClipboardData(text: hubUrl));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Copied $hubUrl'),
+                duration: const Duration(seconds: 2),
               ),
-              const SizedBox(height: 12),
-
-              // Sculptural Portal Address Display
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '$primaryIp:${state.softApPort}',
-                  style: textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.8,
-                    color: isRunning ? Colors.white : scheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Anyone on your Wi-Fi can join in their browser.',
-                style: textTheme.bodySmall?.copyWith(
-                  color: isRunning
-                      ? Colors.white.withAlpha(210)
-                      : scheme.onPrimaryContainer.withAlpha(190),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Pill Action Buttons Row
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    flex: 3,
-                    child: FilledButton.icon(
-                      key: const ValueKey<String>('toggle-softap-server-btn'),
-                      onPressed: () => controller.toggleSoftApHub(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: isRunning
-                            ? SampanTheme.brandLime
-                            : SampanTheme.brandViolet,
-                        foregroundColor: isRunning
-                            ? SampanTheme.violet900
-                            : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: const StadiumBorder(),
-                      ),
-                      icon: Icon(
-                        isRunning
-                            ? Icons.stop_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 20,
-                      ),
-                      label: Text(
-                        isRunning ? 'Stop Hub' : 'Start Hub',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: portalUrl));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Copied $portalUrl'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: isRunning
-                            ? Colors.white.withAlpha(32)
-                            : scheme.surface,
-                        foregroundColor: isRunning
-                            ? Colors.white
-                            : scheme.onSurface,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: const StadiumBorder(),
-                      ),
-                      icon: const Icon(Icons.copy_rounded, size: 17),
-                      label: const Text(
-                        'Copy',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
         const SizedBox(height: 16),
-
-        // 2. Sculptural Stat Row
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _HubStatCard(
-                label: 'CONNECTED',
-                value: '${state.softApClientsCount}',
-                subtitle: 'In browser',
-                onRefresh: controller.refreshSoftApStats,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _HubStatCard(
-                label: 'APP SHARES',
-                value: '${state.softApApkDownloads}',
-                subtitle: 'Offline APK',
-                onRefresh: controller.refreshSoftApStats,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // 3. Expressive Lime Highlight Card (Direct Offline APK Sharing)
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: SampanTheme.brandLime,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Row(
+        if (isRunning) ...<Widget>[
+          JoinQrCard(hubUrl: hubUrl),
+          const SizedBox(height: 16),
+          Row(
             children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: SampanTheme.violet900,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.bolt_rounded,
-                  color: SampanTheme.brandLime,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Instant Offline App Share',
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: SampanTheme.violet900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Friends without Sampan can chat in their browser or download the app directly from your phone.',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: SampanTheme.violet900.withAlpha(215),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: _HubStatCard(
+                  label: 'IN THE CHAT',
+                  value: '${state.softApClientsCount}',
+                  subtitle: 'Browsers',
+                  onRefresh: controller.refreshSoftApStats,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _HubStatCard(
+                  label: 'APP SHARES',
+                  value: '${state.softApApkDownloads}',
+                  subtitle: 'Downloads',
+                  onRefresh: controller.refreshSoftApStats,
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // 4. Minimal 3-Step Guide
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'How it works',
-                style: textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const _StepRow(
-                number: '1',
-                title: 'Turn on phone hotspot',
-                description: 'No mobile data or internet needed.',
-              ),
-              const SizedBox(height: 12),
-              const _StepRow(
-                number: '2',
-                title: 'Tap Start Hub',
-                description: 'Opens a local chat room on your Wi-Fi.',
-              ),
-              const SizedBox(height: 12),
-              _StepRow(
-                number: '3',
-                title: 'Open $portalUrl',
-                description: 'Friends join instantly from Chrome or Safari.',
-              ),
-            ],
-          ),
-        ),
+        ] else
+          const _HowItWorksCard(),
       ],
+    );
+  }
+}
+
+class _HubHeroCard extends StatelessWidget {
+  const _HubHeroCard({
+    required this.isRunning,
+    required this.address,
+    required this.onToggle,
+    required this.onCopy,
+  });
+
+  final bool isRunning;
+  final String address;
+  final VoidCallback onToggle;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final Color ink = isRunning ? Colors.white : scheme.onPrimaryContainer;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isRunning ? SampanTheme.brandViolet : scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(SampanTheme.radiusLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  'Browser Hub',
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color:
+                        isRunning ? SampanTheme.brandLime : ink.withAlpha(200),
+                  ),
+                ),
+              ),
+              Container(
+                key: const ValueKey<String>('hub-status-pill'),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isRunning
+                      ? SampanTheme.brandLime
+                      : scheme.surface.withAlpha(180),
+                  borderRadius: BorderRadius.circular(SampanTheme.radiusPill),
+                ),
+                child: Text(
+                  isRunning ? '● Live' : 'Off',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: isRunning ? SampanTheme.violet900 : ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              isRunning ? address : 'Chat without the app',
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+                color: ink,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isRunning
+                ? 'Friends on your hotspot scan the QR below.'
+                : 'Friends join from any browser — no internet needed.',
+            style: textTheme.bodySmall?.copyWith(
+              color: ink.withAlpha(200),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: <Widget>[
+              Expanded(
+                flex: 3,
+                child: FilledButton.icon(
+                  key: const ValueKey<String>('toggle-softap-server-btn'),
+                  onPressed: onToggle,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isRunning
+                        ? SampanTheme.brandLime
+                        : SampanTheme.brandViolet,
+                    foregroundColor:
+                        isRunning ? SampanTheme.violet900 : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: Icon(
+                    isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                    size: 20,
+                  ),
+                  label: Text(
+                    isRunning ? 'Stop Hub' : 'Start Hub',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              if (isRunning) ...<Widget>[
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.tonalIcon(
+                    key: const ValueKey<String>('copy-hub-link-btn'),
+                    onPressed: onCopy,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withAlpha(32),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.copy_rounded, size: 17),
+                    label: const Text(
+                      'Copy',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HowItWorksCard extends StatelessWidget {
+  const _HowItWorksCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey<String>('hub-how-it-works'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: SampanTheme.brandLime,
+        borderRadius: BorderRadius.circular(SampanTheme.radiusLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'How it works',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: SampanTheme.violet900,
+                ),
+          ),
+          const SizedBox(height: 14),
+          const _StepRow(
+            number: '1',
+            title: 'Turn on your phone’s hotspot',
+            description: 'No mobile data or internet needed.',
+          ),
+          const SizedBox(height: 12),
+          const _StepRow(
+            number: '2',
+            title: 'Tap Start Hub',
+            description: 'A scan-to-join QR appears.',
+          ),
+          const SizedBox(height: 12),
+          const _StepRow(
+            number: '3',
+            title: 'Friends scan it',
+            description: 'They chat in the browser or grab the app.',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -320,7 +285,7 @@ class _HubStatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
+          color: scheme.primaryContainer,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -331,7 +296,7 @@ class _HubStatCard extends StatelessWidget {
               style: textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.7,
-                color: scheme.primary,
+                color: scheme.onPrimaryContainer.withAlpha(190),
               ),
             ),
             const SizedBox(height: 6),
@@ -343,6 +308,7 @@ class _HubStatCard extends StatelessWidget {
                 style: textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.8,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
             ),
@@ -350,7 +316,7 @@ class _HubStatCard extends StatelessWidget {
             Text(
               subtitle,
               style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
+                color: scheme.onPrimaryContainer.withAlpha(200),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -374,13 +340,13 @@ class _StepRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         CircleAvatar(
           radius: 13,
-          backgroundColor: SampanTheme.brandViolet,
+          backgroundColor: SampanTheme.violet900,
           foregroundColor: SampanTheme.brandLime,
           child: Text(
             number,
@@ -394,15 +360,16 @@ class _StepRow extends StatelessWidget {
             children: <Widget>[
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: SampanTheme.violet900,
+                ),
               ),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                style: textTheme.bodySmall?.copyWith(
+                  color: SampanTheme.violet900.withAlpha(200),
+                ),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:sampan/data/models/identity_profile.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/models/spot_model.dart';
 import 'package:sampan/data/services/native_bridge.dart';
 
 /// Local-first, reactive database for Sampan (`Peers` and `Messages` tables
@@ -61,11 +62,16 @@ CREATE TABLE IF NOT EXISTS messages (
   IdentityProfile? _identity;
   final Map<String, PeerModel> _peersById = <String, PeerModel>{};
   final List<MessageModel> _messages = <MessageModel>[];
+  final Map<String, SpotModel> _spotsById = <String, SpotModel>{};
+  String? _hotspotSsid;
+  String? _hotspotPassword;
 
   final StreamController<List<PeerModel>> _peersController =
       StreamController<List<PeerModel>>.broadcast();
   final StreamController<List<MessageModel>> _messagesController =
       StreamController<List<MessageModel>>.broadcast();
+  final StreamController<List<SpotModel>> _spotsController =
+      StreamController<List<SpotModel>>.broadcast();
 
   IdentityProfile? get identity => _identity;
 
@@ -143,8 +149,26 @@ CREATE TABLE IF NOT EXISTS messages (
         }
       }
 
+      final List<dynamic>? spotsRaw = decoded['spots'] as List<dynamic>?;
+      if (spotsRaw != null) {
+        _spotsById.clear();
+        for (final dynamic item in spotsRaw) {
+          final SpotModel spot =
+              SpotModel.fromMap(item as Map<String, dynamic>);
+          _spotsById[spot.id] = spot;
+        }
+      }
+
+      final Map<String, dynamic>? hotspotRaw =
+          decoded['hotspot'] as Map<String, dynamic>?;
+      if (hotspotRaw != null) {
+        _hotspotSsid = hotspotRaw['ssid'] as String?;
+        _hotspotPassword = hotspotRaw['password'] as String?;
+      }
+
       _emitPeers();
       _emitMessages();
+      _emitSpots();
     } on Object {
       // Corrupted or unreadable local cache is ignored safely.
     }
@@ -212,98 +236,77 @@ CREATE TABLE IF NOT EXISTS messages (
     }).toList(growable: false);
   }
 
-  /// Seeds initial Cox's Bazar caravan companions so the Compass Radar,
-  /// Virtual Leash, and Caravan Chat are immediately interactive offline.
-  Future<void> seedDemoCaravanIfEmpty() async {
-    if (_peersById.isNotEmpty) return;
+  /// Peer IDs of the demo companions that app versions before 3.0.0 seeded
+  /// on first launch. Real peers never use these keys.
+  static const Set<String> legacyDemoPeerIds = <String>{
+    '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f3f9c',
+    '9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a8821',
+    '3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b4410',
+    '5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a9902',
+  };
 
-    final DateTime now = DateTime.now();
-    final List<PeerModel> demoPeers = <PeerModel>[
-      PeerModel(
-        id: '7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f3f9c',
-        displayName: 'Tanvir Ahmed',
-        avatarIcon: '⛵',
-        colorHex: 0xFF6755EF,
-        role: 'guide',
-        lastLatitude: 21.4278,
-        lastLongitude: 91.9708,
-        lastSeen: now,
-        rssiDbm: -56,
-        speedMetersPerSecond: 1.1,
-      ),
-      PeerModel(
-        id: '9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a8821',
-        displayName: 'Rahim Uddin',
-        avatarIcon: '🏄',
-        colorHex: 0xFF4F3CD6,
-        role: 'traveler',
-        lastLatitude: 21.4264,
-        lastLongitude: 91.9715,
-        lastSeen: now.subtract(const Duration(seconds: 6)),
-        rssiDbm: -68,
-        speedMetersPerSecond: 0.8,
-      ),
-      PeerModel(
-        id: '3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b4410',
-        displayName: 'Nusrat Jahan',
-        avatarIcon: '🐬',
-        colorHex: 0xFFE84A8A,
-        role: 'traveler',
-        lastLatitude: 21.4281,
-        lastLongitude: 91.9694,
-        lastSeen: now.subtract(const Duration(seconds: 12)),
-        rssiDbm: -74,
-        speedMetersPerSecond: 0.5,
-      ),
-      PeerModel(
-        id: '5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a9902',
-        displayName: 'Arif Hasan',
-        avatarIcon: '🌴',
-        colorHex: 0xFF00A896,
-        role: 'traveler',
-        lastLatitude: 21.4255,
-        lastLongitude: 91.9729,
-        lastSeen: now.subtract(const Duration(seconds: 19)),
-        rssiDbm: -81,
-        speedMetersPerSecond: 1.4,
-      ),
-    ];
+  static const String _legacyDemoMessagePrefix = 'seed-msg-';
 
-    for (final PeerModel peer in demoPeers) {
-      _peersById[peer.id] = peer;
-    }
-
-    _messages.addAll(<MessageModel>[
-      MessageModel(
-        id: 'seed-msg-1',
-        senderId: demoPeers[0].id,
-        senderName: demoPeers[0].displayName,
-        senderRole: demoPeers[0].role,
-        content: 'Let’s meet by the red flag at Laboni Point at 5:30 PM.',
-        type: 'text',
-        latitude: 21.4278,
-        longitude: 91.9708,
-        landmarkName: 'Laboni Point',
-        timestamp: now.subtract(const Duration(minutes: 4)),
-        isDelivered: true,
-      ),
-      MessageModel(
-        id: 'seed-msg-2',
-        senderId: demoPeers[1].id,
-        senderName: demoPeers[1].displayName,
-        senderRole: demoPeers[1].role,
-        content: '📍 Walking north toward Laboni Point now!',
-        type: 'gps_ping',
-        latitude: 21.4264,
-        longitude: 91.9715,
-        landmarkName: 'Laboni Point',
-        timestamp: now.subtract(const Duration(minutes: 2)),
-        isDelivered: true,
-      ),
-    ]);
-
+  /// Removes the demo companions and messages seeded by app versions before
+  /// 3.0.0, so upgraded installs only show real people nearby.
+  /// Returns `true` when anything was removed.
+  Future<bool> removeLegacyDemoData() async {
+    final int peersBefore = _peersById.length;
+    final int messagesBefore = _messages.length;
+    _peersById.removeWhere(
+      (String id, PeerModel _) => legacyDemoPeerIds.contains(id),
+    );
+    _messages.removeWhere(
+      (MessageModel m) =>
+          m.id.startsWith(_legacyDemoMessagePrefix) ||
+          legacyDemoPeerIds.contains(m.senderId),
+    );
+    final bool changed = peersBefore != _peersById.length ||
+        messagesBefore != _messages.length;
+    if (!changed) return false;
     _emitPeers();
     _emitMessages();
+    await _persistToDisk();
+    return true;
+  }
+
+  /// User-created Spots, newest first.
+  List<SpotModel> get currentSpots {
+    final List<SpotModel> sorted = _spotsById.values.toList()
+      ..sort((SpotModel a, SpotModel b) => b.createdAt.compareTo(a.createdAt));
+    return List<SpotModel>.unmodifiable(sorted);
+  }
+
+  /// Reactive stream of user-created Spots.
+  Stream<List<SpotModel>> watchSpots() async* {
+    yield currentSpots;
+    yield* _spotsController.stream;
+  }
+
+  Future<void> upsertSpot(SpotModel spot) async {
+    _spotsById[spot.id] = spot;
+    _emitSpots();
+    await _persistToDisk();
+  }
+
+  Future<void> deleteSpot(String spotId) async {
+    if (_spotsById.remove(spotId) == null) return;
+    _emitSpots();
+    await _persistToDisk();
+  }
+
+  /// Phone hotspot name & password the host typed in, used only to render
+  /// the "join Wi-Fi" QR code on this device. Stored in app-private storage.
+  String? get hotspotSsid => _hotspotSsid;
+  String? get hotspotPassword => _hotspotPassword;
+
+  Future<void> saveHotspotCredentials({
+    required String ssid,
+    required String password,
+  }) async {
+    final String cleanSsid = ssid.trim();
+    _hotspotSsid = cleanSsid.isEmpty ? null : cleanSsid;
+    _hotspotPassword = password.isEmpty ? null : password;
     await _persistToDisk();
   }
 
@@ -311,8 +314,12 @@ CREATE TABLE IF NOT EXISTS messages (
     _identity = null;
     _peersById.clear();
     _messages.clear();
+    _spotsById.clear();
+    _hotspotSsid = null;
+    _hotspotPassword = null;
     _emitPeers();
     _emitMessages();
+    _emitSpots();
     await _persistToDisk();
   }
 
@@ -328,6 +335,12 @@ CREATE TABLE IF NOT EXISTS messages (
     }
   }
 
+  void _emitSpots() {
+    if (!_spotsController.isClosed) {
+      _spotsController.add(currentSpots);
+    }
+  }
+
   Future<void> _persistToDisk() async {
     final String? path = _storageFilePath;
     if (path == null) return;
@@ -338,6 +351,11 @@ CREATE TABLE IF NOT EXISTS messages (
         'identity': _identity?.toJson(),
         'peers': _peersById.values.map((PeerModel p) => p.toMap()).toList(),
         'messages': _messages.map((MessageModel m) => m.toMap()).toList(),
+        'spots': _spotsById.values.map((SpotModel s) => s.toMap()).toList(),
+        'hotspot': <String, dynamic>{
+          'ssid': _hotspotSsid,
+          'password': _hotspotPassword,
+        },
       };
       final String encoded = jsonEncode(snapshot);
       final File tmpFile = File('$path.tmp');
@@ -355,5 +373,6 @@ CREATE TABLE IF NOT EXISTS messages (
   Future<void> dispose() async {
     await _peersController.close();
     await _messagesController.close();
+    await _spotsController.close();
   }
 }
