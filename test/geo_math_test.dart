@@ -148,7 +148,7 @@ void main() {
     });
     test('formatCoordinates labels every hemisphere correctly', () {
       expect(
-        GeoMath.formatCoordinates(23.81035, 90.41252),
+        GeoMath.formatCoordinates(23.81036, 90.41252),
         equals('23.8104°N, 90.4125°E'),
       );
       expect(

@@ -455,11 +455,6 @@ class SampanController extends StateNotifier<SampanAppState> {
       );
     }
 
-    _softApHubService.updateHostLocation(
-      latitude: spot.latitude,
-      longitude: spot.longitude,
-      landmark: spot.name,
-    );
     await _database.insertMessage(ping);
     if (mounted) {
       state = state.copyWith(messages: _database.currentMessages);

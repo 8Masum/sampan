@@ -62,6 +62,7 @@ class CompassRadarTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final SampanAppState state = ref.watch(sampanControllerProvider);
     final _RadarTarget? target = _resolveTarget(state);
+    final PeerModel? targetPeer = target?.peer;
     final double? targetLat = target?.latitude;
     final double? targetLon = target?.longitude;
 
@@ -123,9 +124,9 @@ class CompassRadarTab extends ConsumerWidget {
                 'figure 8.',
           ),
         ],
-        if (target?.peer != null) ...<Widget>[
+        if (targetPeer != null) ...<Widget>[
           const SizedBox(height: 16),
-          _SafetyLeashCard(peer: target!.peer!),
+          _SafetyLeashCard(peer: targetPeer),
         ],
       ],
     );

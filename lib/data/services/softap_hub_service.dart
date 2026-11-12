@@ -370,7 +370,8 @@ class SoftApHubService {
   /// styled with Sampan's Material Design 3 violet & lime palette.
   String buildZeroInstallPortalHtml() {
     final IdentityProfile? host = _database.identity;
-    final String hostName = _escapeHtml(host?.displayName ?? 'Sampan host');
+    final String rawHostName = host?.displayName ?? 'Sampan host';
+    final String hostName = _escapeHtml(rawHostName);
     final String? landmark = _hostLandmark;
     final String coords = _hasHostLocation
         ? GeoMath.formatCoordinates(_hostLatitude, _hostLongitude)
@@ -378,11 +379,13 @@ class SoftApHubService {
     final String hostLocationHtml = landmark != null
         ? '📍 ${_escapeHtml(landmark)}${coords.isEmpty ? '' : ' ($coords)'}'
         : (coords.isEmpty ? '' : '📍 $coords');
+    // jsonEncode makes a valid JS string; also neutralise "</" so a name
+    // can never close the inline <script> block.
     final String safeCheckinJsLiteral = jsonEncode(
       landmark != null
           ? '📍 Checked in near $landmark'
-          : '📍 Checked in with $hostName',
-    );
+          : '📍 Checked in with $rawHostName',
+    ).replaceAll('</', '<\/');
 
     return '''<!DOCTYPE html>
 <html lang="en">
