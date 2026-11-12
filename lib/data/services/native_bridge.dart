@@ -188,8 +188,8 @@ class NativeBridge {
       if (raw == null) return null;
       return DeviceSensorSnapshot(
         headingDegrees: (raw['headingDegrees'] as num?)?.toDouble() ?? 0.0,
-        latitude: (raw['latitude'] as num?)?.toDouble() ?? 21.4272,
-        longitude: (raw['longitude'] as num?)?.toDouble() ?? 91.9702,
+        latitude: (raw['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (raw['longitude'] as num?)?.toDouble() ?? 0.0,
         speedMetersPerSecond: (raw['speedMps'] as num?)?.toDouble() ?? 0.0,
         isCompassCalibrated: (raw['isCalibrated'] as bool?) ?? true,
         isHardwareGnss: (raw['hasGpsFix'] as bool?) ?? false,

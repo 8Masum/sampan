@@ -134,6 +134,20 @@ class GeoMath {
     return directions[index];
   }
 
+  /// Hemisphere-aware coordinate label usable anywhere on Earth
+  /// (e.g. `23.8103°N, 90.4125°E` or `33.8688°S, 151.2093°E`).
+  static String formatCoordinates(
+    double latitude,
+    double longitude, {
+    int fractionDigits = 4,
+  }) {
+    final String latHemisphere = latitude < 0 ? 'S' : 'N';
+    final String lonHemisphere = longitude < 0 ? 'W' : 'E';
+    final String lat = latitude.abs().toStringAsFixed(fractionDigits);
+    final String lon = longitude.abs().toStringAsFixed(fractionDigits);
+    return '$lat°$latHemisphere, $lon°$lonHemisphere';
+  }
+
   /// Human-readable distance formatting (`85m`, `1.2km`).
   static String formatDistance(double meters) {
     if (meters.isNaN || meters.isInfinite || meters < 0) {

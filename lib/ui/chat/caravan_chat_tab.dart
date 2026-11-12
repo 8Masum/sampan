@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sampan/core/constants/landmarks.dart';
+import 'package:sampan/core/constants/spot_presets.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/models/spot_model.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/chat/sos_megaphone_modal.dart';
+import 'package:sampan/ui/home/sheets/spots_sheet.dart';
 
 /// Module 2: Minimalist Material Design 3 Expressive Caravan Chat & SOS.
 class CaravanChatTab extends ConsumerStatefulWidget {
@@ -119,30 +121,9 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: OfflineLandmarks.coxsBazarAndCoastal
-                        .map((OfflineLandmark landmark) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ActionChip(
-                          key: ValueKey<String>('landmark-chip-${landmark.id}'),
-                          visualDensity: VisualDensity.compact,
-                          avatar: Text(landmark.icon),
-                          label: Text(
-                            landmark.name,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          onPressed: () =>
-                              controller.sendLandmarkPing(landmark),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                child: _SpotStrip(
+                  spots: state.spots,
+                  onShare: controller.shareSpot,
                 ),
               ),
             ],
@@ -157,7 +138,7 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                     padding: const EdgeInsets.all(32),
                     child: Text(
                       activeDmPeer == null
-                          ? 'Say hello or tap a spot above to check in.'
+                          ? 'Say hi 👋 Messages hop phone to phone — no signal needed.'
                           : 'Private offline chat with ${activeDmPeer.displayName.split(' ').first}.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodyMedium?.copyWith(
@@ -242,6 +223,63 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Saved spots as one-tap check-ins, plus quick ways to add one.
+class _SpotStrip extends StatelessWidget {
+  const _SpotStrip({required this.spots, required this.onShare});
+
+  final List<SpotModel> spots;
+  final Future<void> Function(SpotModel spot) onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    const TextStyle labelStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: <Widget>[
+          ...spots.map((SpotModel spot) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ActionChip(
+                key: ValueKey<String>('spot-chip-${spot.id}'),
+                visualDensity: VisualDensity.compact,
+                avatar: Text(spot.emoji),
+                label: Text(spot.name, style: labelStyle),
+                onPressed: () => onShare(spot),
+              ),
+            );
+          }),
+          if (spots.isEmpty)
+            for (int i = 0; i < SpotPresets.examples.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ActionChip(
+                  key: ValueKey<String>('spot-example-chip-$i'),
+                  visualDensity: VisualDensity.compact,
+                  avatar: Text(SpotPresets.examples[i].emoji),
+                  label: Text(SpotPresets.examples[i].name, style: labelStyle),
+                  onPressed: () => showSpotEditorSheet(
+                    context,
+                    preset: SpotPresets.examples[i],
+                  ),
+                ),
+              ),
+          ActionChip(
+            key: const ValueKey<String>('add-spot-chip'),
+            visualDensity: VisualDensity.compact,
+            avatar: const Icon(Icons.add_rounded, size: 16),
+            label: const Text('Spot', style: labelStyle),
+            onPressed: () => showSpotEditorSheet(context),
+          ),
+        ],
+      ),
     );
   }
 }

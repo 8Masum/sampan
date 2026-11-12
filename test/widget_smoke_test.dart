@@ -5,173 +5,230 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sampan/app.dart';
 import 'package:sampan/data/database/local_database.dart';
+import 'package:sampan/data/models/identity_profile.dart';
+import 'package:sampan/data/models/peer_model.dart';
+import 'package:sampan/data/models/spot_model.dart';
 import 'package:sampan/data/services/app_update_service.dart';
 import 'package:sampan/state/sampan_providers.dart';
+import 'package:sampan/ui/home/home_shell.dart';
+
+// Paris: proves nothing in the app is tied to one country or city.
+const double _userLat = 48.8566;
+const double _userLon = 2.3522;
+const String _peerId =
+    'aa11bb22cc33dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66';
+
+PeerModel _testPeer({bool drifted = false}) {
+  return PeerModel(
+    id: _peerId,
+    displayName: 'Lea Martin',
+    avatarIcon: '🎒',
+    colorHex: 0xFF00A896,
+    role: 'traveler',
+    lastLatitude: 48.8600, // ~380 m due north of the user
+    lastLongitude: _userLon,
+    lastSeen: DateTime.now(),
+    rssiDbm: drifted ? -92 : -60,
+    isLeashFrozen: drifted,
+  );
+}
+
+AppUpdateService _mockUpdateService(String tag) {
+  return AppUpdateService(
+    jsonFetcher: (Uri _) async => <String, dynamic>{
+      'tag_name': tag,
+      'name': 'Sampan (সাম্পান) $tag',
+      'body': 'OTA GitHub Release auto-update test',
+      'draft': false,
+      'prerelease': false,
+      'assets': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'Sampan.apk',
+          'size': 22020096,
+          'browser_download_url':
+              'https://github.com/8Masum/sampan/releases/download/$tag/Sampan.apk',
+        },
+      ],
+    },
+    apkDownloader: ({
+      required Uri url,
+      required File destinationFile,
+      void Function(double progress)? onProgress,
+    }) async {
+      onProgress?.call(1.0);
+      destinationFile.writeAsBytesSync(
+        const <int>[0x50, 0x4B, 0x03, 0x04, 0x01, 0x02],
+      );
+      return destinationFile;
+    },
+  );
+}
+
+SampanController _controllerOf(WidgetTester tester) {
+  final ProviderContainer container =
+      ProviderScope.containerOf(tester.element(find.byType(HomeShell)));
+  return container.read(sampanControllerProvider.notifier);
+}
+
+Future<void> _tapVisible(WidgetTester tester, String key) async {
+  final Finder finder = find.byKey(ValueKey<String>(key));
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+/// Closes the top-most bottom sheet / dialog.
+Future<void> _closeTopSheet(WidgetTester tester) async {
+  tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets(
-      'Full Sampan flow: Onboarding -> Compass Radar -> Virtual Leash -> Sunlight Mode -> Caravan Chat & SOS -> GitHub Auto-Update',
+      'Full v3 flow: onboarding, profile chip, people row, leash, spots, '
+      'chat & SOS, scan-to-join hub QR, and OTA update',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
 
     final LocalDatabase testDb = LocalDatabase();
-    final AppUpdateService mockUpdateService = AppUpdateService(
-      jsonFetcher: (Uri _) async => <String, dynamic>{
-        'tag_name': 'v2.1.0',
-        'name': 'Sampan (সাম্পান) v2.1.0',
-        'body': 'OTA GitHub Release auto-update test',
-        'draft': false,
-        'prerelease': false,
-        'assets': <Map<String, dynamic>>[
-          <String, dynamic>{
-            'name': 'Sampan.apk',
-            'size': 22020096,
-            'browser_download_url':
-                'https://github.com/8Masum/sampan/releases/download/v2.1.0/Sampan.apk',
-          },
-        ],
-      },
-      apkDownloader: ({
-        required Uri url,
-        required File destinationFile,
-        void Function(double progress)? onProgress,
-      }) async {
-        onProgress?.call(1.0);
-        destinationFile.writeAsBytesSync(
-          const <int>[0x50, 0x4B, 0x03, 0x04, 0x01, 0x02],
-        );
-        return destinationFile;
-      },
-    );
-
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
           localDatabaseProvider.overrideWithValue(testDb),
-          appUpdateServiceProvider.overrideWithValue(mockUpdateService),
+          appUpdateServiceProvider
+              .overrideWithValue(_mockUpdateService('v3.1.0')),
         ],
         child: const SampanApp(),
       ),
     );
     await tester.pumpAndSettle();
 
-    // 1. Verify Onboarding Screen renders
-    expect(find.textContaining('WELCOME TO SAMPAN'), findsOneWidget);
-    final Finder createIdentityBtn =
-        find.byKey(const ValueKey<String>('create-offline-identity-btn'));
-    expect(createIdentityBtn, findsOneWidget);
+    // 1. Onboarding: empty name field, no demo name prefilled.
+    expect(find.textContaining('Stay together'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('onboarding-display-name')),
+      'Maya',
+    );
+    await _tapVisible(tester, 'create-offline-identity-btn');
 
-    // Ensure button is visible in scroll view and tap "Create Offline Identity"
-    await tester.ensureVisible(createIdentityBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(createIdentityBtn);
-    await tester.pumpAndSettle();
-
-    // 2. Verify HomeShell & Module 1 (3D Compass Homing Dial)
+    // 2. Fresh install: compass, my chip, nobody nearby, no demo people.
     expect(
       find.byKey(const ValueKey<String>('compass-homing-dial')),
       findsOneWidget,
     );
+    expect(testDb.currentPeers, isEmpty);
+    expect(find.text('0 nearby'), findsOneWidget);
+    expect(find.text('Maya'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey<String>('pill-ble-peers')),
-      findsOneWidget,
-    );
-    expect(testDb.currentPeers.length, equals(4));
-
-    // Test Virtual Leash drop on selected companion without creating phantom peer
-    final Finder leashBtn =
-        find.byKey(const ValueKey<String>('simulate-leash-drop-btn'));
-    await tester.ensureVisible(leashBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(leashBtn);
-    await tester.pumpAndSettle();
-    expect(testDb.currentPeers.length, equals(4));
-    expect(
-      find.byKey(const ValueKey<String>('restore-leash-signal-btn')),
+      find.byKey(const ValueKey<String>('radar-invite-btn')),
       findsOneWidget,
     );
 
-    // 3. Toggle Sunlight High-Contrast Mode (>7:1 contrast ratio) via the
-    //    AppBar overflow menu
-    await tester.tap(
-      find.byKey(const ValueKey<String>('open-overflow-menu-btn')),
+    // 3. Profile chip opens the editor; identity keys stay the same.
+    final String originalKey = testDb.identity!.publicKeyHex;
+    await _tapVisible(tester, 'my-profile-chip');
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('profile-name-input')),
+      'Maya Lopez',
     );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey<String>('toggle-sunlight-mode-btn')),
-    );
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, 'save-profile-btn');
+    final IdentityProfile updated = testDb.identity!;
+    expect(updated.displayName, equals('Maya Lopez'));
+    expect(updated.publicKeyHex, equals(originalKey));
 
-    // 4. Switch to Module 2 (Caravan Chat)
+    // 4. A real person nearby shows up in the merged header row.
+    final SampanController controller = _controllerOf(tester);
+    controller.updateUserLocation(latitude: _userLat, longitude: _userLon);
+    await testDb.upsertPeer(_testPeer());
+    await tester.pumpAndSettle();
+    expect(find.text('1 nearby'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('target-chip-$_peerId')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Straight ahead'), findsOneWidget);
+
+    // 5. Safety Leash alert can be acknowledged.
+    await testDb.upsertPeer(_testPeer(drifted: true));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, 'acknowledge-leash-btn');
+    expect(testDb.getPeerById(_peerId)!.isLeashFrozen, isFalse);
+
+    // 6. Outdoor contrast lives in the overflow menu.
+    await _tapVisible(tester, 'open-overflow-menu-btn');
+    await _tapVisible(tester, 'toggle-sunlight-mode-btn');
+
+    // 7. Save a spot from the first-time example, then let it guide us.
+    await _tapVisible(tester, 'open-spots-btn');
+    await _tapVisible(tester, 'spot-example-0');
+    await _tapVisible(tester, 'confirm-save-spot-btn');
+    expect(testDb.currentSpots.length, equals(1));
+    final SpotModel spot = testDb.currentSpots.first;
+    expect(spot.name, equals('Meeting point'));
+    expect(spot.latitude, closeTo(_userLat, 0.0001));
+    await _tapVisible(tester, 'spot-guide-${spot.id}');
+    expect(
+      find.byKey(const ValueKey<String>('clear-spot-target-btn')),
+      findsOneWidget,
+    );
+    await _tapVisible(tester, 'clear-spot-target-btn');
+
+    // 8. Chat: share the spot with one tap, then SOS.
     await tester.tap(find.byKey(const ValueKey<String>('nav-chat')));
     await tester.pumpAndSettle();
+    await _tapVisible(tester, 'spot-chip-${spot.id}');
+    expect(find.textContaining('Meeting point ·'), findsWidgets);
 
-    // Send an Offline Landmark Ping (Laboni Point)
-    await tester.tap(
-      find.byKey(const ValueKey<String>('landmark-chip-laboni_point')),
-    );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Landmark Ping: At Laboni Point'), findsWidgets);
-
-    // Fire SOS Digital Megaphone, verify banner, dismiss it, and ensure it stays dismissed
-    await tester.tap(
-      find.byKey(const ValueKey<String>('open-sos-megaphone-btn')),
-    );
-    await tester.pumpAndSettle();
-    final Finder confirmSosBtn =
-        find.byKey(const ValueKey<String>('confirm-sos-broadcast-btn'));
-    await tester.ensureVisible(confirmSosBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(confirmSosBtn);
-    await tester.pumpAndSettle();
-
+    await _tapVisible(tester, 'open-sos-megaphone-btn');
+    await _tapVisible(tester, 'confirm-sos-broadcast-btn');
     expect(
       find.byKey(const ValueKey<String>('active-sos-alert-banner')),
       findsOneWidget,
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('dismiss-sos-alert-btn')),
-    );
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, 'dismiss-sos-alert-btn');
+    await _tapVisible(tester, 'spot-chip-${spot.id}');
     expect(
       find.byKey(const ValueKey<String>('active-sos-alert-banner')),
       findsNothing,
     );
 
-    // Trigger another database update (landmark ping) and confirm dismissed SOS does not reappear
-    await tester.tap(
-      find.byKey(const ValueKey<String>('landmark-chip-laboni_point')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey<String>('active-sos-alert-banner')),
-      findsNothing,
-    );
-
-    // 5. Switch to Module 3 (SoftAP Hub)
+    // 9. Hub: how-it-works when off, themed scan-to-join QR when live.
     await tester.tap(find.byKey(const ValueKey<String>('nav-hub')));
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey<String>('toggle-softap-server-btn')),
+      find.byKey(const ValueKey<String>('hub-how-it-works')),
       findsOneWidget,
     );
+    await tester.runAsync(() => controller.toggleSoftApHub(port: 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('join-qr-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('join-qr-code')), findsOneWidget);
 
-    // 6. Open GitHub Release Auto-Update Sheet, check & trigger APK install
-    await tester.tap(
-      find.byKey(const ValueKey<String>('open-update-sheet-btn')),
+    await _tapVisible(tester, 'qr-mode-wifi');
+    await _tapVisible(tester, 'add-hotspot-btn');
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('hotspot-ssid-input')),
+      'Maya Phone',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('hotspot-password-input')),
+      'test-pass',
+    );
+    await _tapVisible(tester, 'save-hotspot-btn');
+    expect(testDb.hotspotSsid, equals('Maya Phone'));
+    expect(find.textContaining('Maya Phone'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('join-qr-code')), findsOneWidget);
+    await tester.runAsync(() => controller.toggleSoftApHub(port: 0));
     await tester.pumpAndSettle();
-    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
-    expect(find.textContaining('v2.1.0'), findsWidgets);
 
-    final Finder installBtn =
-        find.byKey(const ValueKey<String>('download-install-update-btn'));
-    await tester.ensureVisible(installBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(installBtn);
-    await tester.pumpAndSettle();
+    // 10. GitHub Release auto-update sheet.
+    await _tapVisible(tester, 'open-update-sheet-btn');
+    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
+    expect(find.textContaining('v3.1.0'), findsWidgets);
+    await _tapVisible(tester, 'download-install-update-btn');
     expect(
       find.textContaining('Launching Android package installer'),
       findsOneWidget,
@@ -181,7 +238,8 @@ void main() {
   });
 
   testWidgets(
-      'Narrow 320x640 viewport with 1.5x text scale renders Onboarding and all 3 HomeShell tabs with zero RenderFlex overflow',
+      'Narrow 320x640 viewport with 1.5x text scale renders onboarding, '
+      'all tabs, sheets, and the live hub QR with zero overflow',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1.0;
@@ -192,50 +250,46 @@ void main() {
     });
 
     final LocalDatabase narrowDb = LocalDatabase();
-    final AppUpdateService mockUpdateService = AppUpdateService(
-      jsonFetcher: (Uri _) async => <String, dynamic>{
-        'tag_name': 'v2.0.2',
-        'name': 'Sampan (সাম্পান) v2.0.2',
-        'body': 'Compact layout verification',
-        'draft': false,
-        'prerelease': false,
-        'assets': <Map<String, dynamic>>[
-          <String, dynamic>{
-            'name': 'Sampan.apk',
-            'size': 22020096,
-            'browser_download_url':
-                'https://github.com/8Masum/sampan/releases/download/v2.0.2/Sampan.apk',
-          },
-        ],
-      },
-    );
-
+    await narrowDb.upsertPeer(_testPeer());
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
           localDatabaseProvider.overrideWithValue(narrowDb),
-          appUpdateServiceProvider.overrideWithValue(mockUpdateService),
+          appUpdateServiceProvider
+              .overrideWithValue(_mockUpdateService('v3.0.1')),
         ],
         child: const SampanApp(),
       ),
     );
     await tester.pumpAndSettle();
 
-    // 1. Onboarding on 320dp @ 1.5x text scale
-    final Finder startBtn =
-        find.byKey(const ValueKey<String>('create-offline-identity-btn'));
-    await tester.ensureVisible(startBtn);
-    await tester.pumpAndSettle();
-    await tester.tap(startBtn);
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('onboarding-display-name')),
+      'Alexandria Montgomery',
+    );
+    await _tapVisible(tester, 'create-offline-identity-btn');
+    final SampanController controller = _controllerOf(tester);
+    controller.updateUserLocation(latitude: _userLat, longitude: _userLon);
     await tester.pumpAndSettle();
 
-    // 2. Radar tab on 320dp @ 1.5x text scale
+    // Radar with a person, then the people and profile sheets.
     expect(
       find.byKey(const ValueKey<String>('compass-homing-dial')),
       findsOneWidget,
     );
+    await _tapVisible(tester, 'nearby-people-chip');
+    await _closeTopSheet(tester);
+    await _tapVisible(tester, 'my-profile-chip');
+    await _closeTopSheet(tester);
 
-    // 3. Chat tab on 320dp @ 1.5x text scale
+    // Spots sheet + editor.
+    await _tapVisible(tester, 'open-spots-btn');
+    await _tapVisible(tester, 'save-current-spot-btn');
+    await _tapVisible(tester, 'confirm-save-spot-btn');
+    expect(narrowDb.currentSpots.length, equals(1));
+    await _closeTopSheet(tester);
+
+    // Chat tab.
     await tester.tap(find.byKey(const ValueKey<String>('nav-chat')));
     await tester.pumpAndSettle();
     expect(
@@ -243,19 +297,22 @@ void main() {
       findsOneWidget,
     );
 
-    // 4. Hub tab on 320dp @ 1.5x text scale
+    // Hub tab, off and live (QR card).
     await tester.tap(find.byKey(const ValueKey<String>('nav-hub')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey<String>('toggle-softap-server-btn')),
       findsOneWidget,
     );
-
-    // 5. Update bottom sheet on 320dp @ 1.5x text scale
-    await tester.tap(
-      find.byKey(const ValueKey<String>('open-update-sheet-btn')),
-    );
+    await tester.runAsync(() => controller.toggleSoftApHub(port: 0));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('join-qr-card')), findsOneWidget);
+    await _tapVisible(tester, 'qr-mode-wifi');
+    await tester.runAsync(() => controller.toggleSoftApHub(port: 0));
+    await tester.pumpAndSettle();
+
+    // Update sheet.
+    await _tapVisible(tester, 'open-update-sheet-btn');
     expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
 
     await narrowDb.dispose();

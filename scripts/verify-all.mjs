@@ -419,9 +419,9 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
   );
   assert.ok(
     pubspecVersion !== null &&
-      pubspecVersion[1].startsWith('2.') &&
+      Number(pubspecVersion[1].split('.')[0]) >= 3 &&
       pubspecYml.includes('Logo/Sampan.png'),
-    'pubspec.yaml must declare a 2.x.y+N version and bundle Logo/Sampan.png asset',
+    'pubspec.yaml must declare a 3.x.y+N (or newer) version and bundle Logo/Sampan.png asset',
   );
   assert.ok(
     appVersionConst !== null && appVersionConst[1] === pubspecVersion[1],

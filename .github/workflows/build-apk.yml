@@ -65,12 +65,17 @@ jobs:
           mkdir -p android/app/src/main/kotlin/com/themasum/sampan
           cp /tmp/sampan-native/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/sampan-native/MainActivity.kt android/app/src/main/kotlin/com/themasum/sampan/MainActivity.kt
+          # Restore tracked res/ overlays (violet splash, adaptive icon) over the generated runner
+          git checkout -- android/app/src/main/res
+          # Official logo (unedited) used by the adaptive icon and launch screens
+          mkdir -p android/app/src/main/res/drawable-nodpi
+          cp Logo/Sampan.png android/app/src/main/res/drawable-nodpi/sampan_logo.png
+          # Legacy launcher icons for Android < 8 (no adaptive icon support)
           for dir in android/app/src/main/res/mipmap-*; do
             if [ -d "$dir" ] && [[ "$dir" != *anydpi* ]]; then
               cp Logo/Sampan.png "$dir/ic_launcher.png"
             fi
           done
-          rm -rf android/app/src/main/res/mipmap-anydpi*
 
       - name: Install Flutter dependencies
         run: flutter pub get
@@ -211,8 +216,8 @@ jobs:
             - **Direct APK Download**: Tap [`Sampan.apk`](https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/Sampan.apk) (or [`Sampan-${{ env.RELEASE_TAG }}.apk`](https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/Sampan-${{ env.RELEASE_TAG }}.apk)) below to install on your Android device.
             - **Core Capabilities**:
               1. **3D Compass Homing Dial & Virtual Leash**: Offline GNSS + Magnetometer bearing needle with `-85 dBm / 45s` Virtual Leash alarm.
-              2. **Offline Caravan Chat & Digital Megaphone (SOS)**: ChaCha20-Poly1305 encrypted group/DM rings, Cox's Bazar Landmark Pings, and high-priority SOS broadcast.
-              3. **Zero-Install SoftAP Hotspot Hub**: Embedded HTTP/SSE portal on port `8080` + 25 MB/s local P2P APK transfer (`/download/sampan.apk`).
+              2. **Offline Caravan Chat & Digital Megaphone (SOS)**: ChaCha20-Poly1305 encrypted group/DM rings, your own saved Spots (share or navigate back), and high-priority SOS broadcast.
+              3. **Zero-Install Browser Hub**: Scan-to-join QR (Wi-Fi + hub link), embedded HTTP/SSE portal on port `8080`, and local P2P APK transfer (`/download/sampan.apk`).
             - **Verification**: Check `SHA256SUMS.txt` to verify APK integrity.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

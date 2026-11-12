@@ -37,7 +37,7 @@
 
 ## 🌊 Overview
 
-During peak travel seasons or emergencies in crowded and remote destinations (e.g., **Cox's Bazar beach**, mountain trekking routes, outdoor festivals), cellular networks suffer catastrophic congestion or complete blackout. Tour guides (hosts) and travelers (guests) get separated in noisy crowds where shouting names fails.
+During peak travel seasons or emergencies in crowded and remote destinations (beaches, mountain trails, festivals, stadiums, or disaster zones anywhere in the world), cellular networks suffer catastrophic congestion or complete blackout. Tour guides (hosts) and travelers (guests) get separated in noisy crowds where shouting names fails.
 
 Named after the traditional crescent-shaped wooden boats navigating the turbulent waters of the Bay of Bengal, **Sampan (সাম্পান)** is an **offline-first, zero-cloud social and safety network**. It empowers smartphones to communicate directly with one another over **Bluetooth Low Energy (BLE)** and **Local Wi-Fi Hotspots (SoftAP)** without cellular towers, satellite subscriptions, or cloud servers.
 
@@ -81,19 +81,19 @@ Named after the traditional crescent-shaped wooden boats navigating the turbulen
 - **Concentric Rings of Communication**:
   1. **Caravan Group Ring**: ChaCha20-Poly1305 authenticated encrypted broadcast chat between the Tour Guide and all registered guests.
   2. **Direct P2P DMs**: 1-to-1 encrypted conversations between companions.
-  3. **The Digital Megaphone (SOS)**: High-priority unencrypted emergency broadcast with bearing and distance telemetry (`🚨 SOS Alert from Rahim: "Separated near Laboni Point red lifeguard stand!" [Bearing: 035°, 110m]`).
-- **Offline Landmark Pings**: Pre-loaded Cox's Bazar & coastal landmark chips (`🏖️ Laboni Point`, `🌊 Sugandha Beach`, `🐬 Kolatoli Point`, `🪨 Inani Coral Reef`, `⛰️ Himchari Waterfall`, `⚓ Saint Martin Jetty`) for one-tap situational sharing.
+  3. **The Digital Megaphone (SOS)**: High-priority unencrypted emergency broadcast with bearing and distance telemetry (`🚨 SOS Alert from Maya: "I need help — please come to me." [Bearing: 035°, 110m]`).
+- **Your Own Spots (works anywhere)**: Save any place at your current GPS position (`📍 Meeting point`, `🚗 Parking`, or your own name & emoji). Share a spot with the group in one tap, or let the compass **guide you back to it** — fully offline. First-time users get two example spots to start from.
 
-### 📡 Module 3: Zero-Install SoftAP Hotspot Portal
+### 📡 Module 3: Zero-Install Browser Hub (Scan to Join)
 Solves the "cold-start" adoption dilemma when travelers haven't pre-installed the app:
-1. **Host SoftAP Activation**: The Tour Guide enables their phone Wi-Fi hotspot (`Sampan-Beach-Hub-01`).
-2. **Embedded Dart Server**: Sampan launches a background `shelf` HTTP & Server-Sent Events (SSE) server on port `8080`.
-3. **Instant Browser Access**: Unregistered guests connect to Wi-Fi and open `http://192.168.43.1:8080` in Chrome or Safari for live group chat, offline GPS sharing, and SOS alerts.
+1. **Host Hotspot**: The host turns on their phone's Wi-Fi hotspot (no mobile data needed).
+2. **Embedded Dart Server**: Tapping **Start Hub** launches a background `shelf` HTTP & Server-Sent Events (SSE) server on port `8080`.
+3. **Scan-to-Join QR (in Sampan's violet & lime style)**: Step **1 · Wi-Fi** shows a standard Wi-Fi QR (`WIFI:T:WPA;S:…;P:…;;`) that phone cameras join in one scan; step **2 · Hub** opens `http://<host-ip>:8080` in any browser for live group chat, location sharing, and SOS alerts.
 4. **Direct 25 MB/s P2P APK Download**: Guests can tap **`⚡ Download Native Sampan App`** (`/download/sampan.apk`) to transfer the full Android APK directly from the Host's phone in `< 5` seconds without internet.
 
 ---
 
-## 🎨 Minimalist Material Design 3 Expressive Palette (v2.0.0)
+## 🎨 Minimalist Material Design 3 Expressive Palette
 
 | Token Role | Hex Code | Visual Metaphor & Purpose |
 | :--- | :--- | :--- |
@@ -103,7 +103,7 @@ Solves the "cold-start" adoption dilemma when travelers haven't pre-installed th
 | **Surface Canvas** | `#F7F5FF` *(Light)* / `#0E0A1F` *(Dark)* | Airy lavender-white light canvas & deep cosmic violet dark canvas. |
 | **Error / SOS** | `#BA1A1A` / `#FF5449` | High-priority SOS broadcast and Safety Leash drift alerts. |
 
-Includes a one-tap **Sunlight High-Contrast Mode (`☀️ >7:1`)** in the top app bar that boosts contrast ratios and font weights for direct tropical beach sunlight.
+Includes an **Outdoor Contrast mode (`☀️ >7:1`)** (top-bar ⋮ menu) that boosts contrast ratios and font weights for reading in direct sunlight. The launch screen and adaptive launcher icon use the official logo on a full Electric Violet background.
 
 ---
 
