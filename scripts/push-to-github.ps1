@@ -4,7 +4,7 @@
   v1.0.0 Android APK release workflow.
 
 .PARAMETER Owner
-  GitHub username or organization (e.g., "themasum-com" or "themasumiqbal").
+  GitHub username or organization (e.g., "8Masum").
   If omitted, uses the authenticated GitHub CLI user.
 
 .PARAMETER Tag

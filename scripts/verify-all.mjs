@@ -407,10 +407,25 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     'Logo/Sampan.png must exist in repository',
   );
   const pubspecYml = fs.readFileSync(path.join(ROOT, 'pubspec.yaml'), 'utf8');
+  const pubspecVersion = /^version:\s*(\d+\.\d+\.\d+)\+\d+\s*$/m.exec(
+    pubspecYml,
+  );
+  const constantsDart = fs.readFileSync(
+    path.join(ROOT, 'lib', 'core', 'constants', 'protocol_constants.dart'),
+    'utf8',
+  );
+  const appVersionConst = /appVersion = '(\d+\.\d+\.\d+)'/.exec(
+    constantsDart,
+  );
   assert.ok(
-    pubspecYml.includes('version: 2.0.0+') &&
+    pubspecVersion !== null &&
+      pubspecVersion[1].startsWith('2.') &&
       pubspecYml.includes('Logo/Sampan.png'),
-    'pubspec.yaml must declare version 2.0.0+ and bundle Logo/Sampan.png asset',
+    'pubspec.yaml must declare a 2.x.y+N version and bundle Logo/Sampan.png asset',
+  );
+  assert.ok(
+    appVersionConst !== null && appVersionConst[1] === pubspecVersion[1],
+    'SampanConstants.appVersion must match the pubspec.yaml versionName so OTA update comparisons stay correct',
   );
   const themeDart = fs.readFileSync(
     path.join(ROOT, 'lib', 'core', 'theme', 'sampan_theme.dart'),

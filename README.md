@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/themasum-com/sampan/releases/latest">
-    <img src="https://img.shields.io/github/v/release/themasum-com/sampan?color=6755EF&label=Latest%20Release&logo=github" alt="Latest Release" />
+  <a href="https://github.com/8Masum/sampan/releases/latest">
+    <img src="https://img.shields.io/github/v/release/8Masum/sampan?color=6755EF&label=Latest%20Release&logo=github" alt="Latest Release" />
   </a>
-  <a href="https://github.com/themasum-com/sampan/actions/workflows/build-apk.yml">
-    <img src="https://github.com/themasum-com/sampan/actions/workflows/build-apk.yml/badge.svg?branch=main" alt="Build and Release" />
+  <a href="https://github.com/8Masum/sampan/actions/workflows/build-apk.yml">
+    <img src="https://github.com/8Masum/sampan/actions/workflows/build-apk.yml/badge.svg?branch=main" alt="Build and Release" />
   </a>
   <a href="#security--cryptography">
     <img src="https://img.shields.io/badge/Crypto-Ed25519_%2B_ChaCha20-6755EF.svg" alt="Ed25519 + ChaCha20-Poly1305" />
@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/themasum-com/sampan/releases/latest/download/Sampan.apk">
+  <a href="https://github.com/8Masum/sampan/releases/latest/download/Sampan.apk">
     <img src="https://img.shields.io/badge/Download_APK-Sampan.apk-6755EF?style=for-the-badge&logo=android&logoColor=F4FF90" alt="Download APK" />
   </a>
 </p>
@@ -60,11 +60,11 @@ Named after the traditional crescent-shaped wooden boats navigating the turbulen
 
 | Release | File | Action |
 | :--- | :--- | :--- |
-| **Latest Release** | `Sampan.apk` | [**Download Raw APK**](https://github.com/themasum-com/sampan/releases/latest/download/Sampan.apk) |
-| **Checksums** | `SHA256SUMS.txt` | [**View File Hashes**](https://github.com/themasum-com/sampan/releases/latest/download/SHA256SUMS.txt) |
-| **All Releases** | Release changelogs & tags | [**View GitHub Releases**](https://github.com/themasum-com/sampan/releases) |
+| **Latest Release** | `Sampan.apk` | [**Download Raw APK**](https://github.com/8Masum/sampan/releases/latest/download/Sampan.apk) |
+| **Checksums** | `SHA256SUMS.txt` | [**View File Hashes**](https://github.com/8Masum/sampan/releases/latest/download/SHA256SUMS.txt) |
+| **All Releases** | Release changelogs & tags | [**View GitHub Releases**](https://github.com/8Masum/sampan/releases) |
 
-- **Built-in GitHub Release OTA Auto-Update**: Whenever internet is available, Sampan silently checks `themasum-com/sampan/releases/latest` (or tap the **System Update** icon in the top bar) to download `Sampan.apk` and launch Android's native package installer in-place.
+- **Built-in GitHub Release OTA Auto-Update**: Whenever internet is available, Sampan silently checks `8Masum/sampan/releases/latest` (or tap the **System Update** icon in the top bar) to download `Sampan.apk` and launch Android's native package installer in-place.
 - **Offline Caravan Propagation**: Once the Tour Guide updates their app via GitHub Releases, any traveler connecting to the Guide's **SoftAP Hotspot Hub** (`/download/sampan.apk`) automatically receives the newly updated APK offline at 25 MB/s.
 
 ---

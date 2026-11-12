@@ -9,11 +9,11 @@ class SampanConstants {
   static const String appName = 'Sampan';
   static const String appNameBengali = 'সাম্পান';
   static const String tagline = 'Find your people, even offline.';
-  static const String appVersion = '2.0.0';
+  static const String appVersion = '2.0.1';
   static const String logoAssetPath = 'Logo/Sampan.png';
 
   /// GitHub Release OTA Auto-Update Endpoints.
-  static const String githubOwner = 'themasum-com';
+  static const String githubOwner = '8Masum';
   static const String githubRepo = 'sampan';
   static const String githubLatestReleaseApiUrl =
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';

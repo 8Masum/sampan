@@ -19,8 +19,8 @@ void main() {
     final LocalDatabase testDb = LocalDatabase();
     final AppUpdateService mockUpdateService = AppUpdateService(
       jsonFetcher: (Uri _) async => <String, dynamic>{
-        'tag_name': 'v1.1.0',
-        'name': 'Sampan (সাম্পান) v1.1.0',
+        'tag_name': 'v2.1.0',
+        'name': 'Sampan (সাম্পান) v2.1.0',
         'body': 'OTA GitHub Release auto-update test',
         'draft': false,
         'prerelease': false,
@@ -29,7 +29,7 @@ void main() {
             'name': 'Sampan.apk',
             'size': 22020096,
             'browser_download_url':
-                'https://github.com/themasum-com/sampan/releases/download/v1.1.0/Sampan.apk',
+                'https://github.com/8Masum/sampan/releases/download/v2.1.0/Sampan.apk',
           },
         ],
       },
@@ -93,7 +93,12 @@ void main() {
       findsOneWidget,
     );
 
-    // 3. Toggle Sunlight High-Contrast Mode (>7:1 contrast ratio)
+    // 3. Toggle Sunlight High-Contrast Mode (>7:1 contrast ratio) via the
+    //    AppBar overflow menu
+    await tester.tap(
+      find.byKey(const ValueKey<String>('open-overflow-menu-btn')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey<String>('toggle-sunlight-mode-btn')),
     );
@@ -159,7 +164,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
-    expect(find.textContaining('v1.1.0'), findsWidgets);
+    expect(find.textContaining('v2.1.0'), findsWidgets);
 
     final Finder installBtn =
         find.byKey(const ValueKey<String>('download-install-update-btn'));
@@ -189,8 +194,8 @@ void main() {
     final LocalDatabase narrowDb = LocalDatabase();
     final AppUpdateService mockUpdateService = AppUpdateService(
       jsonFetcher: (Uri _) async => <String, dynamic>{
-        'tag_name': 'v2.0.1',
-        'name': 'Sampan (সাম্পান) v2.0.1',
+        'tag_name': 'v2.0.2',
+        'name': 'Sampan (সাম্পান) v2.0.2',
         'body': 'Compact layout verification',
         'draft': false,
         'prerelease': false,
@@ -199,7 +204,7 @@ void main() {
             'name': 'Sampan.apk',
             'size': 22020096,
             'browser_download_url':
-                'https://github.com/themasum-com/sampan/releases/download/v2.0.1/Sampan.apk',
+                'https://github.com/8Masum/sampan/releases/download/v2.0.2/Sampan.apk',
           },
         ],
       },

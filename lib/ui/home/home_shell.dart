@@ -521,24 +521,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       appBar: AppBar(
         title: Row(
           children: <Widget>[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                SampanConstants.logoAssetPath,
-                width: 34,
-                height: 34,
-                filterQuality: FilterQuality.high,
-                errorBuilder: (
-                  BuildContext context,
-                  Object error,
-                  StackTrace? stackTrace,
-                ) {
-                  return Text(
-                    state.identity?.avatarIcon ?? '⛵',
-                    style: const TextStyle(fontSize: 20),
-                  );
-                },
-              ),
+            Image.asset(
+              SampanConstants.logoAssetPath,
+              width: 34,
+              height: 34,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (
+                BuildContext context,
+                Object error,
+                StackTrace? stackTrace,
+              ) {
+                return Text(
+                  state.identity?.avatarIcon ?? '⛵',
+                  style: const TextStyle(fontSize: 20),
+                );
+              },
             ),
             const SizedBox(width: 10),
             const Flexible(
@@ -556,72 +554,34 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ),
         actions: <Widget>[
           IconButton(
-            key: const ValueKey<String>('toggle-sunlight-mode-btn'),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-            tooltip: 'Outdoor Contrast',
-            onPressed: controller.toggleSunlightHighContrast,
-            icon: Icon(
-              state.isSunlightMode
-                  ? Icons.wb_sunny_rounded
-                  : Icons.wb_sunny_outlined,
-              size: 20,
-            ),
-          ),
-          IconButton(
-            key: const ValueKey<String>('toggle-dark-mode-btn'),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-            tooltip: 'Theme',
-            onPressed: () {
-              final SampanVisualMode next =
-                  state.visualMode == SampanVisualMode.dark
-                      ? SampanVisualMode.light
-                      : SampanVisualMode.dark;
-              controller.setVisualMode(next);
-            },
-            icon: Icon(
-              state.visualMode == SampanVisualMode.dark
-                  ? Icons.dark_mode_rounded
-                  : Icons.light_mode_outlined,
-              size: 20,
-            ),
-          ),
-          IconButton(
             key: const ValueKey<String>('open-noticeboard-btn'),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Group Pins',
             onPressed: () =>
                 _openSpatioTemporalNoticeboardSheet(context, state),
-            icon: const Icon(Icons.push_pin_outlined, size: 20),
-          ),
-          IconButton(
-            key: const ValueKey<String>('open-protocol-inspector-btn'),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-            tooltip: 'Signal Info',
-            onPressed: () => _openGpsAndProtocolInspectorSheet(context, state),
-            icon: const Icon(Icons.sensors_rounded, size: 20),
+            icon: const Icon(Icons.push_pin_outlined, size: 22),
           ),
           IconButton(
             key: const ValueKey<String>('open-update-sheet-btn'),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Updates',
             onPressed: () => _openAppUpdateSheet(context),
             icon: Badge(
               isLabelVisible: state.hasAvailableUpdate,
               backgroundColor: SampanTheme.brandViolet,
-              child: const Icon(Icons.system_update_rounded, size: 20),
+              child: const Icon(Icons.system_update_rounded, size: 22),
             ),
           ),
-          const SizedBox(width: 6),
+          _HomeOverflowMenu(
+            state: state,
+            onToggleSunlight: controller.toggleSunlightHighContrast,
+            onToggleDarkMode: () => controller.setVisualMode(
+              state.visualMode == SampanVisualMode.dark
+                  ? SampanVisualMode.light
+                  : SampanVisualMode.dark,
+            ),
+            onOpenSignalInfo: () =>
+                _openGpsAndProtocolInspectorSheet(context, state),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
@@ -793,6 +753,71 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ),
         ],
       ),
+    );
+  }
+}
+
+enum _OverflowAction { sunlight, darkMode, signalInfo }
+
+/// Secondary AppBar actions tucked into one overflow menu to keep the
+/// top bar minimal.
+class _HomeOverflowMenu extends StatelessWidget {
+  const _HomeOverflowMenu({
+    required this.state,
+    required this.onToggleSunlight,
+    required this.onToggleDarkMode,
+    required this.onOpenSignalInfo,
+  });
+
+  final SampanAppState state;
+  final VoidCallback onToggleSunlight;
+  final VoidCallback onToggleDarkMode;
+  final VoidCallback onOpenSignalInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = state.visualMode == SampanVisualMode.dark;
+    return PopupMenuButton<_OverflowAction>(
+      key: const ValueKey<String>('open-overflow-menu-btn'),
+      tooltip: 'More',
+      icon: const Icon(Icons.more_vert_rounded, size: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onSelected: (_OverflowAction action) {
+        switch (action) {
+          case _OverflowAction.sunlight:
+            onToggleSunlight();
+          case _OverflowAction.darkMode:
+            onToggleDarkMode();
+          case _OverflowAction.signalInfo:
+            onOpenSignalInfo();
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<_OverflowAction>>[
+        CheckedPopupMenuItem<_OverflowAction>(
+          key: const ValueKey<String>('toggle-sunlight-mode-btn'),
+          value: _OverflowAction.sunlight,
+          checked: state.isSunlightMode,
+          child: const Text('Outdoor contrast'),
+        ),
+        CheckedPopupMenuItem<_OverflowAction>(
+          key: const ValueKey<String>('toggle-dark-mode-btn'),
+          value: _OverflowAction.darkMode,
+          checked: isDark,
+          child: const Text('Dark theme'),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<_OverflowAction>(
+          key: ValueKey<String>('open-protocol-inspector-btn'),
+          value: _OverflowAction.signalInfo,
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.sensors_rounded, size: 20),
+              SizedBox(width: 12),
+              Flexible(child: Text('Signal info')),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

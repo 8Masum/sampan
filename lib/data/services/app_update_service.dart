@@ -47,7 +47,7 @@ typedef ApkFileDownloader = Future<File> Function({
 });
 
 /// Lightweight, zero-cloud-dependency OTA updater that checks GitHub Releases
-/// (`https://api.github.com/repos/themasum-com/sampan/releases/latest`),
+/// (`https://api.github.com/repos/8Masum/sampan/releases/latest`),
 /// downloads `Sampan.apk` with progress reporting, verifies APK archive magic
 /// bytes, and launches the Android system package installer.
 class AppUpdateService {

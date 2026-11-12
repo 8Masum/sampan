@@ -700,7 +700,7 @@ class SampanController extends StateNotifier<SampanAppState> {
     );
   }
 
-  /// Checks GitHub Releases (`themasum-com/sampan`) for a newer APK version.
+  /// Checks GitHub Releases (`8Masum/sampan`) for a newer APK version.
   Future<ReleaseUpdateInfo?> checkForAppUpdate({bool silent = false}) async {
     if (!mounted) return null;
     state = state.copyWith(

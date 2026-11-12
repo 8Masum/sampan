@@ -91,7 +91,7 @@ void main() {
       );
       expect(
         AppUpdateService.extractTagFromRedirectUrl(
-          'https://github.com/themasum-com/sampan/releases/latest',
+          'https://github.com/8Masum/sampan/releases/latest',
         ),
         isNull,
       );
@@ -112,13 +112,13 @@ void main() {
             'name': 'Sampan-v1.2.0.apk',
             'size': 20971520,
             'browser_download_url':
-                'https://github.com/themasum-com/sampan/releases/download/v1.2.0/Sampan-v1.2.0.apk',
+                'https://github.com/8Masum/sampan/releases/download/v1.2.0/Sampan-v1.2.0.apk',
           },
           <String, dynamic>{
             'name': 'Sampan.apk',
             'size': 20971520,
             'browser_download_url':
-                'https://github.com/themasum-com/sampan/releases/download/v1.2.0/Sampan.apk',
+                'https://github.com/8Masum/sampan/releases/download/v1.2.0/Sampan.apk',
           },
         ],
       };
@@ -134,7 +134,7 @@ void main() {
       expect(
         info.apkDownloadUrl,
         equals(
-          'https://github.com/themasum-com/sampan/releases/download/v1.2.0/Sampan.apk',
+          'https://github.com/8Masum/sampan/releases/download/v1.2.0/Sampan.apk',
         ),
       );
       expect(info.formattedSize, equals('20.0 MB'));
@@ -162,7 +162,7 @@ void main() {
             'name': 'SHA256SUMS.txt',
             'size': 161,
             'browser_download_url':
-                'https://github.com/themasum-com/sampan/releases/download/v2.0.0/SHA256SUMS.txt',
+                'https://github.com/8Masum/sampan/releases/download/v2.0.0/SHA256SUMS.txt',
           },
         ],
       };
@@ -231,7 +231,7 @@ void main() {
         releaseTitle: 'v1.1.0',
         releaseNotes: 'Notes',
         apkDownloadUrl:
-            'https://github.com/themasum-com/sampan/releases/latest/download/Sampan.apk',
+            'https://github.com/8Masum/sampan/releases/latest/download/Sampan.apk',
         isUpdateAvailable: true,
       );
 
