@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,24 +48,15 @@ AppUpdateService _mockUpdateService(String tag) {
         },
       ],
     },
-    apkDownloader: ({
-      required Uri url,
-      required File destinationFile,
-      void Function(double progress)? onProgress,
-    }) async {
-      onProgress?.call(1.0);
-      destinationFile.writeAsBytesSync(
-        const <int>[0x50, 0x4B, 0x03, 0x04, 0x01, 0x02],
-      );
-      return destinationFile;
-    },
   );
 }
 
+ProviderContainer _containerOf(WidgetTester tester) {
+  return ProviderScope.containerOf(tester.element(find.byType(HomeShell)));
+}
+
 SampanController _controllerOf(WidgetTester tester) {
-  final ProviderContainer container =
-      ProviderScope.containerOf(tester.element(find.byType(HomeShell)));
-  return container.read(sampanControllerProvider.notifier);
+  return _containerOf(tester).read(sampanControllerProvider.notifier);
 }
 
 Future<void> _tapVisible(WidgetTester tester, String key) async {
@@ -99,7 +88,7 @@ void main() {
         overrides: <Override>[
           localDatabaseProvider.overrideWithValue(testDb),
           appUpdateServiceProvider
-              .overrideWithValue(_mockUpdateService('v3.1.0')),
+              .overrideWithValue(_mockUpdateService('v3.6.0')),
         ],
         child: const SampanApp(),
       ),
@@ -224,13 +213,27 @@ void main() {
     await tester.runAsync(() => controller.toggleSoftApHub(port: 0));
     await tester.pumpAndSettle();
 
-    // 10. GitHub Release auto-update sheet.
+    // 10. Updates: check in the app, install via the browser.
     await _tapVisible(tester, 'open-update-sheet-btn');
-    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
-    expect(find.textContaining('v3.1.0'), findsWidgets);
+    expect(find.text('App updates'), findsOneWidget);
+    expect(find.textContaining('v3.6.0'), findsWidgets);
     await _tapVisible(tester, 'download-install-update-btn');
+    expect(find.text('App updates'), findsNothing);
     expect(
-      find.textContaining('Launching Android package installer'),
+      _containerOf(tester).read(sampanControllerProvider).updateStatusMessage,
+      contains('browser'),
+    );
+
+    // Missed the browser's install prompt? The banner returns on resume.
+    await _tapVisible(tester, 'dismiss-update-banner-btn');
+    expect(
+      find.byKey(const ValueKey<String>('update-available-banner')),
+      findsNothing,
+    );
+    controller.onAppResumed();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('update-available-banner')),
       findsOneWidget,
     );
 
@@ -256,7 +259,7 @@ void main() {
         overrides: <Override>[
           localDatabaseProvider.overrideWithValue(narrowDb),
           appUpdateServiceProvider
-              .overrideWithValue(_mockUpdateService('v3.0.1')),
+              .overrideWithValue(_mockUpdateService('v3.5.1')),
         ],
         child: const SampanApp(),
       ),
@@ -313,7 +316,7 @@ void main() {
 
     // Update sheet.
     await _tapVisible(tester, 'open-update-sheet-btn');
-    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
+    expect(find.text('App updates'), findsOneWidget);
 
     await narrowDb.dispose();
   });

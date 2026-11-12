@@ -4,6 +4,7 @@ import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/common/identity_pickers.dart';
+import 'package:sampan/ui/common/sampan_logo.dart';
 
 /// Minimalist Material Design 3 Expressive onboarding.
 ///
@@ -177,20 +178,7 @@ class _HeroCard extends StatelessWidget {
       child: Column(
         children: <Widget>[
           // Official brand logo, used as-is (no crop or edit).
-          Image.asset(
-            SampanConstants.logoAssetPath,
-            width: 128,
-            height: 128,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (
-              BuildContext context,
-              Object error,
-              StackTrace? stackTrace,
-            ) {
-              return const Text('⛵', style: TextStyle(fontSize: 52));
-            },
-          ),
+          const SampanLogo(size: 128),
           const SizedBox(height: 16),
           Text(
             'No signal?\nStay together.',

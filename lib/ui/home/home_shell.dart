@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/data/models/message_model.dart';
 import 'package:sampan/state/sampan_providers.dart';
 import 'package:sampan/ui/chat/caravan_chat_tab.dart';
+import 'package:sampan/ui/common/sampan_logo.dart';
 import 'package:sampan/ui/home/home_tab_provider.dart';
 import 'package:sampan/ui/home/sheets/profile_sheet.dart';
 import 'package:sampan/ui/home/sheets/signal_sheet.dart';
@@ -29,23 +29,7 @@ class HomeShell extends ConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: <Widget>[
-            Image.asset(
-              SampanConstants.logoAssetPath,
-              width: 34,
-              height: 34,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (
-                BuildContext context,
-                Object error,
-                StackTrace? stackTrace,
-              ) {
-                return Text(
-                  state.identity?.avatarIcon ?? '⛵',
-                  style: const TextStyle(fontSize: 20),
-                );
-              },
-            ),
+            const SampanLogo(size: 34),
             const SizedBox(width: 10),
             const Flexible(
               child: Text(
@@ -96,10 +80,7 @@ class HomeShell extends ConsumerWidget {
           if (state.hasAvailableUpdate && !state.isUpdateBannerDismissed)
             _UpdateBanner(
               tagName: state.availableUpdate?.tagName ?? '',
-              onUpdate: () {
-                showAppUpdateSheet(context, ref);
-                controller.downloadAndInstallAppUpdate();
-              },
+              onUpdate: controller.openUpdateInBrowser,
               onDismiss: controller.dismissUpdateBanner,
             ),
           if (state.activeSosAlert != null)

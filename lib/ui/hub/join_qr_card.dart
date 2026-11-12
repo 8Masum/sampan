@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/core/net/join_qr_payload.dart';
 import 'package:sampan/core/theme/sampan_theme.dart';
 import 'package:sampan/state/sampan_providers.dart';
+import 'package:sampan/ui/common/sampan_logo.dart';
 
 enum _JoinStep { wifi, hub }
 
@@ -124,22 +124,34 @@ class _ThemedQr extends StatelessWidget {
         borderRadius: BorderRadius.circular(SampanTheme.radiusMd),
         border: Border.all(color: SampanTheme.brandLime, width: 6),
       ),
-      child: QrImageView(
-        key: const ValueKey<String>('join-qr-code'),
-        data: data,
-        size: 200,
-        backgroundColor: Colors.white,
-        errorCorrectionLevel: QrErrorCorrectLevel.H,
-        eyeStyle: const QrEyeStyle(
-          eyeShape: QrEyeShape.circle,
-          color: SampanTheme.violet900,
-        ),
-        dataModuleStyle: const QrDataModuleStyle(
-          dataModuleShape: QrDataModuleShape.circle,
-          color: SampanTheme.brandViolet,
-        ),
-        embeddedImage: const AssetImage(SampanConstants.logoAssetPath),
-        embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(40, 40)),
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          // High error correction keeps the code readable under the logo.
+          QrImageView(
+            key: const ValueKey<String>('join-qr-code'),
+            data: data,
+            size: 200,
+            backgroundColor: Colors.white,
+            errorCorrectionLevel: QrErrorCorrectLevel.H,
+            eyeStyle: const QrEyeStyle(
+              eyeShape: QrEyeShape.circle,
+              color: SampanTheme.violet900,
+            ),
+            dataModuleStyle: const QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.circle,
+              color: SampanTheme.brandViolet,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const SampanLogo(size: 40),
+          ),
+        ],
       ),
     );
   }

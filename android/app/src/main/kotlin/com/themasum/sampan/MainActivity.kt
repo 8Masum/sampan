@@ -12,14 +12,9 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.ClipData
-import android.content.ContentProvider
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.database.Cursor
-import android.database.MatrixCursor
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -31,14 +26,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Looper
-import android.os.ParcelFileDescriptor
-import android.provider.OpenableColumns
-import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
-import java.io.FileNotFoundException
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
@@ -64,7 +54,6 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
     private var bleScanner: BluetoothLeScanner? = null
     private var isScanning = false
     private var lastAdvertisingPayload: ByteArray? = null
-    private var pendingInstallApkFile: File? = null
     private val discoveredFrames = ConcurrentHashMap<String, Map<String, Any>>()
 
     private val advertiseCallback = object : AdvertiseCallback() {}
@@ -119,13 +108,9 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
                     "getAppVersion" -> {
                         result.success(readInstalledVersionName())
                     }
-                    "installApk" -> {
-                        val filePath = call.argument<String>("filePath")
-                        if (filePath.isNullOrBlank()) {
-                            result.success("failed")
-                        } else {
-                            result.success(launchApkInstaller(filePath))
-                        }
+                    "openUrl" -> {
+                        val url = call.argument<String>("url")
+                        result.success(!url.isNullOrBlank() && openInBrowser(url))
                     }
                     "getLocalIpAddresses" -> {
                         result.success(enumerateLocalIpv4Addresses())
@@ -481,22 +466,6 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
         )
     }
 
-    override fun onResume() {
-        super.onResume()
-        val pending = pendingInstallApkFile ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            packageManager.canRequestPackageInstalls()
-        ) {
-            pendingInstallApkFile = null
-            try {
-                if (pending.exists() && pending.length() > 0L) {
-                    startPackageInstallerIntent(pending)
-                }
-            } catch (_: Throwable) {
-            }
-        }
-    }
-
     @Suppress("DEPRECATION")
     private fun readInstalledVersionName(): String {
         return try {
@@ -514,135 +483,20 @@ class MainActivity : FlutterActivity(), SensorEventListener, LocationListener {
         }
     }
 
-    private fun launchApkInstaller(rawFilePath: String): String {
+    /** Opens an https link (the GitHub release APK) in the user's browser,
+     *  which downloads it fast and offers its own "Install / Update" prompt. */
+    private fun openInBrowser(url: String): Boolean {
         return try {
-            val sourceFile = File(rawFilePath)
-            if (!sourceFile.exists() || sourceFile.length() <= 0L) {
-                return "failed"
+            val uri = Uri.parse(url)
+            if (uri.scheme != "https") return false
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            val updatesDir = File(applicationContext.filesDir, "updates")
-            if (!updatesDir.exists()) {
-                updatesDir.mkdirs()
-            }
-            val targetFile = File(updatesDir, "Sampan-update.apk")
-            if (sourceFile.canonicalPath != targetFile.canonicalPath) {
-                sourceFile.copyTo(targetFile, overwrite = true)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                !packageManager.canRequestPackageInstalls()
-            ) {
-                pendingInstallApkFile = targetFile
-                try {
-                    val settingsIntent = Intent(
-                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:$packageName")
-                    ).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    startActivity(settingsIntent)
-                } catch (_: Throwable) {
-                    val fallbackIntent = Intent(
-                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
-                    ).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    startActivity(fallbackIntent)
-                }
-                return "permission_requested"
-            }
-
-            startPackageInstallerIntent(targetFile)
-            "installer_launched"
+            startActivity(intent)
+            true
         } catch (_: Throwable) {
-            pendingInstallApkFile = null
-            "failed"
+            false
         }
     }
-
-    @Suppress("DEPRECATION")
-    private fun startPackageInstallerIntent(apkFile: File) {
-        val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Uri.parse("content://${applicationContext.packageName}.fileprovider/update/${apkFile.name}")
-        } else {
-            Uri.fromFile(apkFile)
-        }
-        val installIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            clipData = ClipData.newRawUri("", apkUri)
-            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(installIntent)
-    }
-}
-
-/**
- * Self-contained Android [ContentProvider] serving downloaded GitHub Release
- * APK files (`content://com.themasum.sampan.fileprovider/update/Sampan-update.apk`)
- * to the Android system PackageInstaller on API 24+ without requiring external
- * XML path resources.
- */
-class ApkFileProvider : ContentProvider() {
-    override fun onCreate(): Boolean = true
-
-    private fun resolveUpdateFile(uri: Uri): File {
-        val ctx = context ?: throw FileNotFoundException("Context unavailable")
-        val updatesDir = File(ctx.filesDir, "updates").canonicalFile
-        val fileName = uri.lastPathSegment ?: "Sampan-update.apk"
-        val candidate = File(updatesDir, fileName).canonicalFile
-        val updatesPrefix = updatesDir.path + File.separator
-        if (!candidate.path.startsWith(updatesPrefix) || !candidate.exists()) {
-            throw FileNotFoundException("APK file not found: $uri")
-        }
-        return candidate
-    }
-
-    override fun getType(uri: Uri): String =
-        "application/vnd.android.package-archive"
-
-    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
-        val file = resolveUpdateFile(uri)
-        return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-    }
-
-    override fun query(
-        uri: Uri,
-        projection: Array<out String>?,
-        selection: String?,
-        selectionArgs: Array<out String>?,
-        sortOrder: String?
-    ): Cursor {
-        val file = resolveUpdateFile(uri)
-        val cols = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
-        val names = ArrayList<String>(cols.size)
-        val values = ArrayList<Any?>(cols.size)
-        for (col in cols) {
-            when (col) {
-                OpenableColumns.DISPLAY_NAME -> {
-                    names.add(OpenableColumns.DISPLAY_NAME)
-                    values.add(file.name)
-                }
-                OpenableColumns.SIZE -> {
-                    names.add(OpenableColumns.SIZE)
-                    values.add(file.length())
-                }
-            }
-        }
-        val cursor = MatrixCursor(names.toTypedArray(), 1)
-        cursor.addRow(values.toTypedArray())
-        return cursor
-    }
-
-    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
-
-    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
-
-    override fun update(
-        uri: Uri,
-        values: ContentValues?,
-        selection: String?,
-        selectionArgs: Array<out String>?
-    ): Int = 0
 }
