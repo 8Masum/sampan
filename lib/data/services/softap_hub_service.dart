@@ -269,7 +269,7 @@ class SoftApHubService {
                       ? resolvedSenderName.substring(0, 32)
                       : resolvedSenderName,
                   avatarIcon: resolvedRole == 'guide' ? '⛵' : '🏄',
-                  colorHex: resolvedRole == 'guide' ? 0xFFE08244 : 0xFF2A9D8F,
+                  colorHex: resolvedRole == 'guide' ? 0xFF6755EF : 0xFF4F3CD6,
                   role: resolvedRole,
                   lastLatitude: lat,
                   lastLongitude: lon,

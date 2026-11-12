@@ -491,7 +491,7 @@ class SampanController extends StateNotifier<SampanAppState> {
           privateSeedHex: kFallbackLocalPublicKeyHex,
           displayName: 'Local Traveler',
           avatarIcon: '⛵',
-          colorHex: 0xFF006877,
+          colorHex: 0xFF6755EF,
           role: 'traveler',
           createdAt: DateTime.now(),
         );

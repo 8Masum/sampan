@@ -70,32 +70,33 @@ export function createSampanSoftApHub(options = {}) {
       --lifeguard-red: #BA1A1A;
       --surface-card: #FFFFFF;
       --text-main: #1B1145;
+      --text-muted: #564C7A;
       --legacy-ocean: #004D5A;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--sandy-dune); color: var(--text-main); display: flex; flex-direction: column; height: 100dvh; }
-    header { background: var(--ocean-deep); color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-    .brand-title { font-size: 17px; font-weight: 800; }
-    .brand-sub { font-size: 11px; color: var(--ocean-container); margin-top: 2px; }
-    .pill { font-size: 11px; padding: 5px 10px; border-radius: 999px; background: rgba(42, 157, 143, 0.25); color: var(--ocean-container); border: 1px solid var(--ocean-container); font-weight: 700; }
-    .apk-banner { background: linear-gradient(90deg, #004D5A, #2A9D8F); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; border-bottom: 2px solid var(--sunset-amber); }
-    .apk-btn { background: var(--sunset-amber); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
-    .host-bar { background: #EBF6F8; padding: 8px 16px; font-size: 12px; color: var(--ocean-deep); border-bottom: 1px solid #C9E2E7; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-weight: 600; }
-    #setup-bar { background: var(--surface-card); padding: 8px 16px; border-bottom: 1px solid #E0E4E6; display: flex; gap: 8px; align-items: center; }
-    #setup-bar input, #setup-bar select { border: 1.5px solid #BFC8CB; padding: 7px 10px; border-radius: 10px; font-size: 13px; background: var(--sandy-dune); color: var(--text-main); font-weight: 600; }
+    header { background: var(--ocean-deep); color: #fff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .brand-title { font-size: 18px; font-weight: 900; letter-spacing: -0.2px; color: var(--sunset-amber); }
+    .brand-sub { font-size: 11px; color: #fff; opacity: 0.85; margin-top: 2px; }
+    .pill { font-size: 11px; padding: 6px 12px; border-radius: 999px; background: var(--sunset-amber); color: var(--text-main); font-weight: 800; }
+    .apk-banner { background: var(--ocean-container); padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--text-main); text-decoration: none; font-size: 13px; font-weight: 800; }
+    .apk-btn { background: var(--ocean-deep); color: var(--sunset-amber); padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .host-bar { background: #EFEAFF; padding: 8px 18px; font-size: 12px; color: var(--text-main); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-weight: 700; }
+    #setup-bar { background: var(--surface-card); padding: 8px 18px; display: flex; gap: 8px; align-items: center; }
+    #setup-bar input, #setup-bar select { border: none; padding: 9px 14px; border-radius: 999px; font-size: 13px; background: #EFEAFF; color: var(--text-main); font-weight: 700; }
     #setup-bar input { flex: 1; }
-    #action-bar { background: #FFF5F4; border-bottom: 1px solid #FFDAD6; padding: 9px 16px; display: flex; gap: 8px; align-items: center; }
-    .sos-btn { background: var(--lifeguard-red); color: #fff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; flex: 1; }
-    .gps-btn { background: var(--sunset-amber); color: #fff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
-    #chat-container { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-    .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-break: break-word; }
-    .msg.incoming { background: var(--surface-card); align-self: flex-start; border: 1px solid #DCE3E6; }
+    #action-bar { background: var(--surface-card); padding: 8px 18px 10px; display: flex; gap: 8px; align-items: center; }
+    .sos-btn { background: var(--lifeguard-red); color: #fff; border: none; padding: 10px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; cursor: pointer; flex: 1; }
+    .gps-btn { background: var(--ocean-container); color: var(--text-main); border: none; padding: 10px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; cursor: pointer; }
+    #chat-container { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 85%; padding: 12px 16px; border-radius: 22px; font-size: 14px; line-height: 1.4; word-break: break-word; }
+    .msg.incoming { background: var(--ocean-container); color: var(--text-main); align-self: flex-start; }
     .msg.outgoing { background: var(--ocean-deep); color: #fff; align-self: flex-end; }
     .msg.alert { background: #FFDAD6; border: 2px solid var(--lifeguard-red); color: #410002; align-self: center; width: 100%; text-align: center; font-weight: 800; }
     .msg-meta { font-size: 11px; opacity: 0.78; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
-    footer { background: var(--surface-card); border-top: 1px solid #DCE3E6; padding: 10px 16px; display: flex; gap: 8px; }
-    footer input { flex: 1; border: 1.5px solid #BFC8CB; padding: 10px 14px; border-radius: 999px; font-size: 14px; outline: none; }
-    footer button { background: var(--ocean-deep); color: #fff; border: none; padding: 10px 20px; border-radius: 999px; font-weight: 800; cursor: pointer; }
+    footer { background: var(--surface-card); padding: 10px 18px 14px; display: flex; gap: 8px; }
+    footer input { flex: 1; border: none; background: #EFEAFF; padding: 12px 18px; border-radius: 999px; font-size: 14px; outline: none; }
+    footer button { background: var(--ocean-deep); color: var(--sunset-amber); border: none; padding: 12px 22px; border-radius: 999px; font-weight: 900; cursor: pointer; }
   </style>
 </head>
 <body>

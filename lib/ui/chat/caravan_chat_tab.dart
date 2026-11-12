@@ -176,9 +176,20 @@ class _CaravanChatTabState extends ConsumerState<CaravanChatTab> {
                     final MessageModel msg = visibleMessages[index];
                     final bool isMe = msg.senderId == myId ||
                         msg.senderId == 'local-user';
+                    PeerModel? senderPeer;
+                    for (final PeerModel p in state.peers) {
+                      if (p.id == msg.senderId) {
+                        senderPeer = p;
+                        break;
+                      }
+                    }
                     return _MessageBubble(
                       message: msg,
                       isMe: isMe,
+                      senderAvatar: senderPeer?.avatarIcon ??
+                          (msg.senderRole == 'guide' ? '⛵' : '🏄'),
+                      senderColorHex:
+                          senderPeer?.colorHex ?? 0xFF6755EF,
                     );
                   },
                 ),
@@ -239,10 +250,14 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     required this.isMe,
+    required this.senderAvatar,
+    required this.senderColorHex,
   });
 
   final MessageModel message;
   final bool isMe;
+  final String senderAvatar;
+  final int senderColorHex;
 
   @override
   Widget build(BuildContext context) {
@@ -293,39 +308,67 @@ class _MessageBubble extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            child: Text(
-              '${isMe ? 'You' : message.senderName.split(' ').first} · $timeStr',
-              style: textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
+          if (!isMe) ...<Widget>[
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: Color(senderColorHex),
+              child: Text(
+                senderAvatar,
+                style: const TextStyle(fontSize: 14),
               ),
             ),
-          ),
-          Container(
-            constraints: const BoxConstraints(maxWidth: 310),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe ? SampanTheme.brandViolet : scheme.primaryContainer,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(isMe ? 24 : 8),
-                topRight: Radius.circular(isMe ? 8 : 24),
-                bottomLeft: const Radius.circular(24),
-                bottomRight: const Radius.circular(24),
-              ),
-            ),
-            child: Text(
-              message.content,
-              style: textTheme.bodyMedium?.copyWith(
-                color: isMe ? Colors.white : scheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
-              ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    '${isMe ? 'You' : message.senderName.split(' ').first} · $timeStr',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 310),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isMe
+                        ? SampanTheme.brandViolet
+                        : scheme.primaryContainer,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(isMe ? 24 : 8),
+                      topRight: Radius.circular(isMe ? 8 : 24),
+                      bottomLeft: const Radius.circular(24),
+                      bottomRight: const Radius.circular(24),
+                    ),
+                  ),
+                  child: Text(
+                    message.content,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: isMe ? Colors.white : scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

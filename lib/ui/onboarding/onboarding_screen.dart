@@ -93,24 +93,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     const SizedBox(height: 20),
 
                     // Official Brand Logo (used directly as-is, no crop or edit)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        SampanConstants.logoAssetPath,
-                        width: 116,
-                        height: 116,
-                        filterQuality: FilterQuality.high,
-                        errorBuilder: (
-                          BuildContext context,
-                          Object error,
-                          StackTrace? stackTrace,
-                        ) {
-                          return Text(
-                            _selectedAvatar,
-                            style: const TextStyle(fontSize: 52),
-                          );
-                        },
-                      ),
+                    Image.asset(
+                      SampanConstants.logoAssetPath,
+                      width: 128,
+                      height: 128,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (
+                        BuildContext context,
+                        Object error,
+                        StackTrace? stackTrace,
+                      ) {
+                        return Text(
+                          _selectedAvatar,
+                          style: const TextStyle(fontSize: 52),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -257,8 +255,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
                       children: SampanConstants.identityColorHexes.map((
                         int hex,
                       ) {
@@ -270,8 +269,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           onTap: () => setState(() => _selectedColorHex = hex),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
-                            width: 38,
-                            height: 38,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: Color(hex),
                               shape: BoxShape.circle,
@@ -305,18 +304,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: SampanTheme.brandLime,
                   foregroundColor: SampanTheme.violet900,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
                   shape: const StadiumBorder(),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    Text(
-                      _isGenerating ? 'Setting up...' : 'Start Offline',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
+                    Flexible(
+                      child: Text(
+                        _isGenerating ? 'Setting up...' : 'Start Offline',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -365,7 +370,7 @@ class _RoleOptionCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? SampanTheme.brandViolet : scheme.surface,
           borderRadius: BorderRadius.circular(20),
@@ -373,7 +378,7 @@ class _RoleOptionCard extends StatelessWidget {
         child: Row(
           children: <Widget>[
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: isSelected
                     ? SampanTheme.brandLime
@@ -382,17 +387,18 @@ class _RoleOptionCard extends StatelessWidget {
               ),
               child: Icon(
                 icon,
-                size: 18,
+                size: 16,
                 color: SampanTheme.violet900,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     title,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: isSelected ? Colors.white : scheme.onSurface,

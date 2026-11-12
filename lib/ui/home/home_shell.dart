@@ -272,6 +272,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       fontWeight: FontWeight.w900,
                     ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                'Your phone is broadcasting an offline beacon to nearby friends.',
+                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -465,6 +472,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                               liveState.isCheckingForUpdate
                                   ? 'Checking...'
                                   : 'Check',
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -485,6 +493,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                               hasUpdate
                                   ? 'Update (${release!.tagName})'
                                   : 'Reinstall',
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -549,18 +558,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           IconButton(
             key: const ValueKey<String>('toggle-sunlight-mode-btn'),
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Outdoor Contrast',
             onPressed: controller.toggleSunlightHighContrast,
             icon: Icon(
               state.isSunlightMode
                   ? Icons.wb_sunny_rounded
                   : Icons.wb_sunny_outlined,
-              size: 21,
+              size: 20,
             ),
           ),
           IconButton(
             key: const ValueKey<String>('toggle-dark-mode-btn'),
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Theme',
             onPressed: () {
               final SampanVisualMode next =
@@ -573,33 +586,39 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               state.visualMode == SampanVisualMode.dark
                   ? Icons.dark_mode_rounded
                   : Icons.light_mode_outlined,
-              size: 21,
+              size: 20,
             ),
           ),
           IconButton(
             key: const ValueKey<String>('open-noticeboard-btn'),
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Group Pins',
             onPressed: () =>
                 _openSpatioTemporalNoticeboardSheet(context, state),
-            icon: const Icon(Icons.push_pin_outlined, size: 21),
+            icon: const Icon(Icons.push_pin_outlined, size: 20),
           ),
           IconButton(
             key: const ValueKey<String>('open-protocol-inspector-btn'),
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Signal Info',
             onPressed: () => _openGpsAndProtocolInspectorSheet(context, state),
-            icon: const Icon(Icons.sensors_rounded, size: 21),
+            icon: const Icon(Icons.sensors_rounded, size: 20),
           ),
           IconButton(
             key: const ValueKey<String>('open-update-sheet-btn'),
             visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             tooltip: 'Updates',
             onPressed: () => _openAppUpdateSheet(context),
             icon: Badge(
               isLabelVisible: state.hasAvailableUpdate,
               backgroundColor: SampanTheme.brandViolet,
-              child: const Icon(Icons.system_update_rounded, size: 21),
+              child: const Icon(Icons.system_update_rounded, size: 20),
             ),
           ),
           const SizedBox(width: 6),

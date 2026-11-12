@@ -174,4 +174,85 @@ void main() {
 
     await testDb.dispose();
   });
+
+  testWidgets(
+      'Narrow 320x640 viewport with 1.5x text scale renders Onboarding and all 3 HomeShell tabs with zero RenderFlex overflow',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(() {
+      tester.view.reset();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+
+    final LocalDatabase narrowDb = LocalDatabase();
+    final AppUpdateService mockUpdateService = AppUpdateService(
+      jsonFetcher: (Uri _) async => <String, dynamic>{
+        'tag_name': 'v2.0.1',
+        'name': 'Sampan (সাম্পান) v2.0.1',
+        'body': 'Compact layout verification',
+        'draft': false,
+        'prerelease': false,
+        'assets': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'name': 'Sampan.apk',
+            'size': 22020096,
+            'browser_download_url':
+                'https://github.com/themasum-com/sampan/releases/download/v2.0.1/Sampan.apk',
+          },
+        ],
+      },
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          localDatabaseProvider.overrideWithValue(narrowDb),
+          appUpdateServiceProvider.overrideWithValue(mockUpdateService),
+        ],
+        child: const SampanApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Onboarding on 320dp @ 1.5x text scale
+    final Finder startBtn =
+        find.byKey(const ValueKey<String>('create-offline-identity-btn'));
+    await tester.ensureVisible(startBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(startBtn);
+    await tester.pumpAndSettle();
+
+    // 2. Radar tab on 320dp @ 1.5x text scale
+    expect(
+      find.byKey(const ValueKey<String>('compass-homing-dial')),
+      findsOneWidget,
+    );
+
+    // 3. Chat tab on 320dp @ 1.5x text scale
+    await tester.tap(find.byKey(const ValueKey<String>('nav-chat')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('chat-message-input')),
+      findsOneWidget,
+    );
+
+    // 4. Hub tab on 320dp @ 1.5x text scale
+    await tester.tap(find.byKey(const ValueKey<String>('nav-hub')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey<String>('toggle-softap-server-btn')),
+      findsOneWidget,
+    );
+
+    // 5. Update bottom sheet on 320dp @ 1.5x text scale
+    await tester.tap(
+      find.byKey(const ValueKey<String>('open-update-sheet-btn')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('GitHub Release Auto-Update'), findsOneWidget);
+
+    await narrowDb.dispose();
+  });
 }

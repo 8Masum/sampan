@@ -40,34 +40,41 @@ class SoftApHubTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(
-                    isRunning ? 'Hotspot Hub Live' : 'Browser Hub',
-                    style: textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isRunning
-                          ? SampanTheme.brandLime
-                          : scheme.onPrimaryContainer.withAlpha(200),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isRunning
-                          ? Colors.white.withAlpha(30)
-                          : scheme.surface.withAlpha(180),
-                      borderRadius:
-                          BorderRadius.circular(SampanTheme.radiusPill),
-                    ),
+                  Expanded(
                     child: Text(
-                      SampanConstants.softApDefaultSsid,
-                      style: textTheme.labelSmall?.copyWith(
+                      isRunning ? 'Hotspot Hub Live' : 'Browser Hub',
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: isRunning
-                            ? Colors.white
-                            : scheme.onPrimaryContainer,
+                            ? SampanTheme.brandLime
+                            : scheme.onPrimaryContainer.withAlpha(200),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isRunning
+                            ? Colors.white.withAlpha(30)
+                            : scheme.surface.withAlpha(180),
+                        borderRadius:
+                            BorderRadius.circular(SampanTheme.radiusPill),
+                      ),
+                      child: Text(
+                        SampanConstants.softApDefaultSsid,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isRunning
+                              ? Colors.white
+                              : scheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
                   ),
@@ -76,12 +83,16 @@ class SoftApHubTab extends ConsumerWidget {
               const SizedBox(height: 12),
 
               // Sculptural Portal Address Display
-              Text(
-                '$primaryIp:${state.softApPort}',
-                style: textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.8,
-                  color: isRunning ? Colors.white : scheme.onPrimaryContainer,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '$primaryIp:${state.softApPort}',
+                  style: textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                    color: isRunning ? Colors.white : scheme.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
@@ -122,6 +133,7 @@ class SoftApHubTab extends ConsumerWidget {
                       ),
                       label: Text(
                         isRunning ? 'Stop Hub' : 'Start Hub',
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 15,
@@ -155,6 +167,7 @@ class SoftApHubTab extends ConsumerWidget {
                       icon: const Icon(Icons.copy_rounded, size: 17),
                       label: const Text(
                         'Copy',
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -322,11 +335,15 @@ class _HubStatCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              value,
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.8,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.8,
+                ),
               ),
             ),
             const SizedBox(height: 2),

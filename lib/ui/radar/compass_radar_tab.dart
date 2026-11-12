@@ -88,22 +88,28 @@ class CompassRadarTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        target?.avatarIcon ?? '⛵',
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        target?.displayName ?? 'Companion',
-                        style: textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
+                  Expanded(
+                    child: Row(
+                      children: <Widget>[
+                        Text(
+                          target?.avatarIcon ?? '⛵',
+                          style: const TextStyle(fontSize: 20),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            target?.displayName ?? 'Companion',
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -238,10 +244,13 @@ class CompassRadarTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(
-                    'Compass angle (${state.compassHeadingDegrees.round()}°)',
-                    style: textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      'Compass angle (${state.compassHeadingDegrees.round()}°)',
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -432,12 +441,16 @@ class _SculpturalMetricCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: scheme.onPrimaryContainer,
-              letterSpacing: -0.8,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: scheme.onPrimaryContainer,
+                letterSpacing: -0.8,
+              ),
             ),
           ),
           const SizedBox(height: 4),

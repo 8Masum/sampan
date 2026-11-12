@@ -420,6 +420,11 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     themeDart.includes('0xFF6755EF') && themeDart.includes('0xFFF4FF90'),
     'sampan_theme.dart must define official Sampan brand palette (#6755EF and #F4FF90)',
   );
+  assert.ok(
+    widgetTestContent.includes('Size(320, 640)') &&
+      widgetTestContent.includes('textScaleFactorTestValue = 1.5'),
+    'widget_smoke_test.dart must verify zero RenderFlex overflow on narrow 320x640 viewport at 1.5x text scale',
+  );
 });
 
 test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS ingestion & APK route', async () => {
@@ -433,7 +438,12 @@ test('Module 3 SoftAP Hub: Zero-Install Portal HTML, live HTTP server, SOS inges
   const html = hub.getPortalHtml();
   assert.ok(html.includes('Sampan (সাম্পান)'));
   assert.ok(html.includes('/download/sampan.apk'));
-  assert.ok(html.includes('#004D5A'));
+  assert.ok(html.includes('#6755EF') && html.includes('#F4FF90'));
+  assert.equal(
+    html.includes('linear-gradient(90deg, #004D5A, #2A9D8F)'),
+    false,
+    'Portal HTML must use M3 Expressive palette without legacy teal gradient',
+  );
   assert.ok(html.includes('Tanvir&#39;s &lt;Guide&gt;'), 'Host name must be HTML-escaped');
   assert.ok(html.includes('Cox&#39;s Bazar'), 'Landmark must be HTML-escaped');
   assert.ok(html.includes('<script>'), 'Portal HTML must include client-side <script>');

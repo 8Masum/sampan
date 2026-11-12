@@ -301,7 +301,7 @@ class SampanTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           shape: const StadiumBorder(),
           textStyle: const TextStyle(
             fontSize: 15,
@@ -312,7 +312,7 @@ class SampanTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           shape: const StadiumBorder(),
           side: BorderSide(color: scheme.outline),
           textStyle: const TextStyle(
