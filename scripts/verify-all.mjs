@@ -362,11 +362,11 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     'MainActivity.kt must handle onRequestPermissionsResult to start BLE/GNSS after user grants permissions',
   );
   assert.ok(
-    mainActivityKt.includes('class ApkFileProvider : ContentProvider()') &&
-      mainActivityKt.includes('"installApk"') &&
-      mainActivityKt.includes('ClipData.newRawUri') &&
-      mainActivityKt.includes('updatesDir.path + File.separator'),
-    'MainActivity.kt must provide hardened ApkFileProvider (with File.separator boundary) and ClipData URI permission propagation for GitHub Release OTA updates',
+    mainActivityKt.includes('"openUrl"') &&
+      mainActivityKt.includes('uri.scheme != "https"') &&
+      !mainActivityKt.includes('ApkFileProvider') &&
+      !mainActivityKt.includes('"installApk"'),
+    'MainActivity.kt must hand updates to the browser via an https-only "openUrl" channel method (no in-app APK installer)',
   );
 
   const appUpdateServiceDart = fs.readFileSync(
@@ -374,10 +374,11 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     'utf8',
   );
   assert.ok(
-    appUpdateServiceDart.includes('receivedBytes != totalBytes') &&
+    appUpdateServiceDart.includes('openReleaseInBrowser') &&
       appUpdateServiceDart.includes('_fetchReleaseViaHtmlRedirect') &&
-      appUpdateServiceDart.includes('hasReadyApk'),
-    'app_update_service.dart must verify complete download byte count, guard against releases without APK assets, and provide HTML redirect fallback for GitHub API rate limits',
+      appUpdateServiceDart.includes('hasReadyApk') &&
+      !appUpdateServiceDart.includes('openWrite('),
+    'app_update_service.dart must check releases in-app, open the APK in the browser (no in-app download), guard against releases without APK assets, and keep the HTML redirect fallback for GitHub API rate limits',
   );
 
   const androidManifest = fs.readFileSync(
@@ -385,9 +386,9 @@ test('Codebase Integrity: Dart imports, balanced delimiters, and lint hygiene', 
     'utf8',
   );
   assert.ok(
-    androidManifest.includes('android.permission.REQUEST_INSTALL_PACKAGES') &&
-      androidManifest.includes('com.themasum.sampan.fileprovider'),
-    'AndroidManifest.xml must declare REQUEST_INSTALL_PACKAGES and ApkFileProvider authority',
+    !androidManifest.includes('android.permission.REQUEST_INSTALL_PACKAGES') &&
+      !androidManifest.includes('com.themasum.sampan.fileprovider'),
+    'AndroidManifest.xml must not request in-app install permissions or an APK FileProvider (updates install via the browser)',
   );
 
   const workflowYml = fs.readFileSync(

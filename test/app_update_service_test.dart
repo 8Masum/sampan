@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sampan/data/services/app_update_service.dart';
+import 'package:sampan/data/services/native_bridge.dart';
 
 void main() {
   group('AppUpdateService version parsing & comparison', () {
@@ -174,71 +173,54 @@ void main() {
       expect(noApkInfo.isUpdateAvailable, isFalse);
     });
 
-    test('validates APK ZIP magic bytes and triggers installer', () async {
-      final List<double> progressLog = <double>[];
+    test('hands the release APK link to the browser instead of downloading',
+        () async {
+      final _RecordingBridge bridge = _RecordingBridge();
       final AppUpdateService service = AppUpdateService(
+        nativeBridge: bridge,
         jsonFetcher: (Uri _) async => <String, dynamic>{
-          'tag_name': 'v1.1.0',
-          'name': 'Sampan v1.1.0',
-          'body': 'OTA auto-update test release',
+          'tag_name': 'v3.5.0',
+          'name': 'Sampan v3.5.0',
+          'body': 'Browser install test release',
           'draft': false,
           'prerelease': false,
-        },
-        apkDownloader: ({
-          required Uri url,
-          required File destinationFile,
-          void Function(double progress)? onProgress,
-        }) async {
-          onProgress?.call(0.5);
-          // Write valid ZIP/APK header PK\x03\x04 followed by payload bytes
-          await destinationFile.writeAsBytes(
-            const <int>[0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00],
-          );
-          onProgress?.call(1.0);
-          return destinationFile;
+          'assets': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'name': 'Sampan.apk',
+              'size': 52807221,
+              'browser_download_url':
+                  'https://github.com/8Masum/sampan/releases/download/v3.5.0/Sampan.apk',
+            },
+          ],
         },
       );
 
       final ReleaseUpdateInfo info = await service.checkForUpdate(
-        currentVersionOverride: '1.0.0',
+        currentVersionOverride: '3.0.0',
       );
       expect(info.isUpdateAvailable, isTrue);
 
-      final String status = await service.downloadAndInstallUpdate(
-        releaseInfo: info,
-        onProgress: progressLog.add,
-      );
-      expect(status, equals('installer_launched'));
-      expect(progressLog, contains(1.0));
-    });
-
-    test('rejects corrupted non-APK download lacking PK header', () async {
-      final AppUpdateService badService = AppUpdateService(
-        apkDownloader: ({
-          required Uri url,
-          required File destinationFile,
-          void Function(double progress)? onProgress,
-        }) async {
-          await destinationFile.writeAsString('<html>404 Not Found</html>');
-          return destinationFile;
-        },
-      );
-
-      const ReleaseUpdateInfo dummyRelease = ReleaseUpdateInfo(
-        currentVersion: '1.0.0',
-        latestVersion: '1.1.0',
-        tagName: 'v1.1.0',
-        releaseTitle: 'v1.1.0',
-        releaseNotes: 'Notes',
-        apkDownloadUrl:
-            'https://github.com/8Masum/sampan/releases/latest/download/Sampan.apk',
-        isUpdateAvailable: true,
-      );
-
+      final bool opened = await service.openReleaseInBrowser(info);
+      expect(opened, isTrue);
       expect(
-        () => badService.downloadAndInstallUpdate(releaseInfo: dummyRelease),
-        throwsFormatException,
+        bridge.openedUrls,
+        equals(<String>[
+          'https://github.com/8Masum/sampan/releases/download/v3.5.0/Sampan.apk',
+        ]),
       );
     });
   });
+}
+
+/// Records browser hand-offs instead of launching a real browser.
+class _RecordingBridge extends NativeBridge {
+  _RecordingBridge();
+
+  final List<String> openedUrls = <String>[];
+
+  @override
+  Future<bool> openUrlInBrowser(String url) async {
+    openedUrls.add(url);
+    return true;
+  }
 }

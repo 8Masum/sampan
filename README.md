@@ -64,7 +64,7 @@ Named after the traditional crescent-shaped wooden boats navigating the turbulen
 | **Checksums** | `SHA256SUMS.txt` | [**View File Hashes**](https://github.com/8Masum/sampan/releases/latest/download/SHA256SUMS.txt) |
 | **All Releases** | Release changelogs & tags | [**View GitHub Releases**](https://github.com/8Masum/sampan/releases) |
 
-- **Built-in GitHub Release OTA Auto-Update**: Whenever internet is available, Sampan silently checks `8Masum/sampan/releases/latest` (or tap the **System Update** icon in the top bar) to download `Sampan.apk` and launch Android's native package installer in-place.
+- **Update checks, fast browser install**: Whenever internet is available, Sampan checks `8Masum/sampan/releases/latest` in the app (on launch, on return to the app, or via the **Updates** icon in the top bar). Tapping **Update** opens `Sampan.apk` in your browser, which downloads it at full speed and shows Android's own install prompt. Missed that prompt? The update banner reappears as soon as you come back to Sampan.
 - **Offline Caravan Propagation**: Once the Tour Guide updates their app via GitHub Releases, any traveler connecting to the Guide's **SoftAP Hotspot Hub** (`/download/sampan.apk`) automatically receives the newly updated APK offline at 25 MB/s.
 
 ---

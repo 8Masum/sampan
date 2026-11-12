@@ -9,7 +9,7 @@ class SampanConstants {
   static const String appName = 'Sampan';
   static const String appNameBengali = 'সাম্পান';
   static const String tagline = 'Find your people, even offline.';
-  static const String appVersion = '3.0.0';
+  static const String appVersion = '3.5.0';
   static const String logoAssetPath = 'Logo/Sampan.png';
 
   /// GitHub Release OTA Auto-Update Endpoints.

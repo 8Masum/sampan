@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sampan/core/constants/protocol_constants.dart';
 import 'package:sampan/core/crypto/identity_crypto_service.dart';
@@ -56,6 +57,9 @@ class SampanController extends StateNotifier<SampanAppState> {
   StreamSubscription<List<SpotModel>>? _spotsSub;
   StreamSubscription<void>? _hubStatsSub;
   Timer? _hardwareSyncTimer;
+  AppLifecycleListener? _lifecycleListener;
+  DateTime? _lastResumeUpdateCheck;
+  static const Duration _resumeCheckInterval = Duration(seconds: 15);
   String? _lastTriggeredSosId;
   bool _wasAlignedWithTarget = false;
 
@@ -139,7 +143,23 @@ class SampanController extends StateNotifier<SampanAppState> {
         (_) => refreshHardwareSensors(),
       );
       unawaited(checkForAppUpdate(silent: true));
+      unawaited(_appUpdateService.deleteLegacyDownloads());
+      // Coming back from the browser without tapping "Update" there? Check
+      // again so the in-app update banner reappears.
+      _lifecycleListener = AppLifecycleListener(onResume: onAppResumed);
     }
+  }
+
+  /// Re-checks for an update whenever the app returns to the foreground
+  /// (at most every [_resumeCheckInterval], so permission dialogs and quick
+  /// app switches don't burn GitHub's 60 requests/hour API limit).
+  void onAppResumed() {
+    if (!mounted || state.isCheckingForUpdate) return;
+    final DateTime now = DateTime.now();
+    final DateTime? last = _lastResumeUpdateCheck;
+    if (last != null && now.difference(last) < _resumeCheckInterval) return;
+    _lastResumeUpdateCheck = now;
+    unawaited(checkForAppUpdate(silent: true));
   }
 
   /// Creates the user's zero-cloud Ed25519 identity in `< 10s` (Section 5.1).
@@ -607,9 +627,8 @@ class SampanController extends StateNotifier<SampanAppState> {
     if (!mounted) return null;
     state = state.copyWith(
       isCheckingForUpdate: true,
-      updateStatusMessage: (silent || state.isDownloadingUpdate)
-          ? state.updateStatusMessage
-          : 'Checking GitHub Releases...',
+      updateStatusMessage:
+          silent ? state.updateStatusMessage : 'Checking GitHub Releases...',
     );
 
     try {
@@ -627,15 +646,14 @@ class SampanController extends StateNotifier<SampanAppState> {
         isCheckingForUpdate: false,
         isUpdateBannerDismissed:
             info.isUpdateAvailable ? false : state.isUpdateBannerDismissed,
-        updateStatusMessage:
-            state.isDownloadingUpdate ? state.updateStatusMessage : statusMsg,
+        updateStatusMessage: statusMsg,
       );
       return info;
     } on Object {
       if (mounted) {
         state = state.copyWith(
           isCheckingForUpdate: false,
-          updateStatusMessage: (silent || state.isDownloadingUpdate)
+          updateStatusMessage: silent
               ? state.updateStatusMessage
               : 'Offline — could not reach GitHub Releases.',
         );
@@ -644,70 +662,35 @@ class SampanController extends StateNotifier<SampanAppState> {
     }
   }
 
-  /// Downloads `Sampan.apk` from the latest GitHub Release and launches the
-  /// native Android package installer (`ApkFileProvider`).
-  Future<String> downloadAndInstallAppUpdate() async {
-    if (state.isDownloadingUpdate) return 'busy';
-
-    ReleaseUpdateInfo? resolvedRelease = state.availableUpdate;
-    if (resolvedRelease == null && !state.isCheckingForUpdate) {
-      resolvedRelease = await checkForAppUpdate(silent: true);
-      if (!mounted) return 'failed';
+  /// Opens the latest release APK in the browser, which downloads it fast
+  /// and shows Android's own "Install / Update" prompt. Returns `true` when a
+  /// browser opened.
+  Future<bool> openUpdateInBrowser() async {
+    ReleaseUpdateInfo? release = state.availableUpdate;
+    if (release == null && !state.isCheckingForUpdate) {
+      release = await checkForAppUpdate(silent: true);
+      if (!mounted) return false;
     }
 
-    final ReleaseUpdateInfo targetRelease = resolvedRelease ??
+    final ReleaseUpdateInfo target = release ??
         ReleaseUpdateInfo(
           currentVersion: state.installedVersion,
           latestVersion: state.installedVersion,
           tagName: 'v${state.installedVersion}',
-          releaseTitle: 'Sampan Latest Release',
+          releaseTitle: 'Sampan latest release',
           releaseNotes: 'Direct APK download from GitHub Releases.',
           apkDownloadUrl: SampanConstants.githubLatestApkDownloadUrl,
           isUpdateAvailable: false,
         );
 
+    final bool opened = await _appUpdateService.openReleaseInBrowser(target);
+    if (!mounted) return opened;
     state = state.copyWith(
-      isDownloadingUpdate: true,
-      updateDownloadProgress: 0.0,
-      updateStatusMessage:
-          'Downloading ${targetRelease.tagName} from GitHub Releases...',
+      updateStatusMessage: opened
+          ? 'Downloading in your browser — tap Install when it finishes.'
+          : 'Couldn’t open a browser. Copy the link from GitHub Releases.',
     );
-
-    try {
-      final String result = await _appUpdateService.downloadAndInstallUpdate(
-        releaseInfo: targetRelease,
-        onProgress: (double progress) {
-          if (mounted) {
-            state = state.copyWith(updateDownloadProgress: progress);
-          }
-        },
-      );
-      if (!mounted) return result;
-
-      final String message = switch (result) {
-        'installer_launched' =>
-          'APK downloaded. Launching Android package installer...',
-        'permission_requested' =>
-          'Enable "Allow from this source" in Settings, then return to Sampan to finish installing.',
-        _ => 'Could not launch Android package installer.',
-      };
-
-      state = state.copyWith(
-        isDownloadingUpdate: false,
-        updateDownloadProgress: 1.0,
-        updateStatusMessage: message,
-      );
-      return result;
-    } on Object {
-      if (mounted) {
-        state = state.copyWith(
-          isDownloadingUpdate: false,
-          updateStatusMessage:
-              'Update download failed. Check your internet connection and try again.',
-        );
-      }
-      return 'failed';
-    }
+    return opened;
   }
 
   void dismissUpdateBanner() {
@@ -717,6 +700,7 @@ class SampanController extends StateNotifier<SampanAppState> {
   @override
   void dispose() {
     _hardwareSyncTimer?.cancel();
+    _lifecycleListener?.dispose();
     _peersSub?.cancel();
     _messagesSub?.cancel();
     _spotsSub?.cancel();

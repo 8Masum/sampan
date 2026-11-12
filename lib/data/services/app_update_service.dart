@@ -40,28 +40,20 @@ class ReleaseUpdateInfo {
 }
 
 typedef ReleaseJsonFetcher = Future<Map<String, dynamic>> Function(Uri uri);
-typedef ApkFileDownloader = Future<File> Function({
-  required Uri url,
-  required File destinationFile,
-  void Function(double progress)? onProgress,
-});
 
-/// Lightweight, zero-cloud-dependency OTA updater that checks GitHub Releases
-/// (`https://api.github.com/repos/8Masum/sampan/releases/latest`),
-/// downloads `Sampan.apk` with progress reporting, verifies APK archive magic
-/// bytes, and launches the Android system package installer.
+/// Lightweight updater: checks GitHub Releases
+/// (`https://api.github.com/repos/8Masum/sampan/releases/latest`) inside the
+/// app, then hands the APK link to the browser, which downloads it fast and
+/// shows Android's own "Install / Update" prompt.
 class AppUpdateService {
   AppUpdateService({
     NativeBridge nativeBridge = const NativeBridge(),
     ReleaseJsonFetcher? jsonFetcher,
-    ApkFileDownloader? apkDownloader,
   })  : _nativeBridge = nativeBridge,
-        _jsonFetcher = jsonFetcher,
-        _apkDownloader = apkDownloader;
+        _jsonFetcher = jsonFetcher;
 
   final NativeBridge _nativeBridge;
   final ReleaseJsonFetcher? _jsonFetcher;
-  final ApkFileDownloader? _apkDownloader;
 
   /// Normalizes a version string such as `'v1.2.0+3'` or `'release-v1.2.0'`
   /// into `'1.2.0'`.
@@ -272,60 +264,25 @@ class AppUpdateService {
     );
   }
 
-  /// Downloads the release APK from GitHub Releases, validates its ZIP/APK
-  /// signature (`0x50 0x4B 0x03 0x04`), and launches the native Android
-  /// package installer.
-  Future<String> downloadAndInstallUpdate({
-    required ReleaseUpdateInfo releaseInfo,
-    void Function(double progress)? onProgress,
-  }) async {
-    final String? appDir = await _nativeBridge.getAppDataDirectory();
-    final Directory baseDir = (appDir != null && appDir.isNotEmpty)
-        ? Directory('$appDir/updates')
-        : Directory('${Directory.systemTemp.path}/sampan_updates');
-    if (!baseDir.existsSync()) {
-      baseDir.createSync(recursive: true);
-    }
-
-    final File destinationFile = File('${baseDir.path}/Sampan-update.apk');
-    final Uri downloadUri = Uri.parse(releaseInfo.apkDownloadUrl);
-
-    final ApkFileDownloader downloader =
-        _apkDownloader ?? _defaultDownloadApkFile;
-    final File downloaded = await downloader(
-      url: downloadUri,
-      destinationFile: destinationFile,
-      onProgress: onProgress,
-    );
-
-    if (!downloaded.existsSync() || downloaded.lengthSync() < 4) {
-      throw const FileSystemException('Downloaded APK file is empty');
-    }
-
-    final RandomAccessFile raf = downloaded.openSync(mode: FileMode.read);
-    final Uint8List header;
-    try {
-      header = raf.readSync(4);
-    } finally {
-      raf.closeSync();
-    }
-    if (!hasValidApkZipHeader(header)) {
-      throw const FormatException(
-        'Downloaded file is not a valid Android APK package',
-      );
-    }
-
-    return _nativeBridge.installDownloadedApk(downloaded.path);
+  /// Opens the release APK link in the browser. Returns `false` if no
+  /// browser could handle it.
+  Future<bool> openReleaseInBrowser(ReleaseUpdateInfo releaseInfo) {
+    return _nativeBridge.openUrlInBrowser(releaseInfo.apkDownloadUrl);
   }
 
-  /// Checks whether the first 4 bytes match the standard ZIP/APK magic header
-  /// (`PK\x03\x04` = `[0x50, 0x4B, 0x03, 0x04]`).
-  static bool hasValidApkZipHeader(List<int> headerBytes) {
-    if (headerBytes.length < 4) return false;
-    return headerBytes[0] == 0x50 &&
-        headerBytes[1] == 0x4B &&
-        headerBytes[2] == 0x03 &&
-        headerBytes[3] == 0x04;
+  /// Removes APK files left by the old in-app downloader (v2.x–v3.0), which
+  /// could take ~50 MB of the phone's storage.
+  Future<void> deleteLegacyDownloads() async {
+    final String? appDir = await _nativeBridge.getAppDataDirectory();
+    if (appDir == null || appDir.isEmpty) return;
+    final Directory legacyDir = Directory('$appDir/updates');
+    try {
+      if (legacyDir.existsSync()) {
+        await legacyDir.delete(recursive: true);
+      }
+    } on FileSystemException {
+      // Best effort: a leftover file must never block the app.
+    }
   }
 
   /// Extracts the release tag from a GitHub `/releases/tag/<tag>` redirect URL.
@@ -425,82 +382,5 @@ class AppUpdateService {
         },
       ],
     };
-  }
-
-  static Future<File> _defaultDownloadApkFile({
-    required Uri url,
-    required File destinationFile,
-    void Function(double progress)? onProgress,
-  }) async {
-    final File partFile = File('${destinationFile.path}.part');
-    if (partFile.existsSync()) {
-      await partFile.delete();
-    }
-
-    final HttpClient client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final HttpClientRequest request =
-          await client.getUrl(url).timeout(const Duration(seconds: 15));
-      request.headers.set(
-        HttpHeaders.userAgentHeader,
-        'Sampan-Android-Updater/${SampanConstants.appVersion}',
-      );
-
-      final HttpClientResponse response =
-          await request.close().timeout(const Duration(seconds: 30));
-      if (response.statusCode != 200) {
-        throw HttpException(
-          'APK download failed with HTTP ${response.statusCode}',
-          uri: url,
-        );
-      }
-
-      final int totalBytes = response.contentLength;
-      int receivedBytes = 0;
-      onProgress?.call(0.0);
-
-      final IOSink sink = partFile.openWrite();
-      try {
-        await for (final List<int> chunk
-            in response.timeout(const Duration(seconds: 45))) {
-          sink.add(chunk);
-          receivedBytes += chunk.length;
-          if (totalBytes > 0) {
-            final double ratio =
-                (receivedBytes / totalBytes).clamp(0.0, 1.0);
-            onProgress?.call(ratio);
-          }
-        }
-        await sink.flush();
-      } finally {
-        await sink.close();
-      }
-
-      if (totalBytes > 0 && receivedBytes != totalBytes) {
-        throw HttpException(
-          'Incomplete APK download: received $receivedBytes of $totalBytes bytes',
-          uri: url,
-        );
-      }
-
-      if (destinationFile.existsSync()) {
-        await destinationFile.delete();
-      }
-      final File renamed = await partFile.rename(destinationFile.path);
-      onProgress?.call(1.0);
-      return renamed;
-    } on Object {
-      if (partFile.existsSync()) {
-        try {
-          await partFile.delete();
-        } on Object {
-          // Ignore cleanup errors on partial download failure.
-        }
-      }
-      rethrow;
-    } finally {
-      client.close(force: true);
-    }
   }
 }

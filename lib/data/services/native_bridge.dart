@@ -95,23 +95,21 @@ class NativeBridge {
     return SampanConstants.appVersion;
   }
 
-  /// Launches the native Android package installer (`Intent.ACTION_VIEW` via
-  /// `ApkFileProvider`) for the downloaded GitHub Release APK.
-  ///
-  /// Returns `'installer_launched'`, `'permission_requested'` (if Android 8+
-  /// opened the "Install unknown apps" settings screen), or `'failed'`.
-  Future<String> installDownloadedApk(String filePath) async {
+  /// Opens an `https` link in the user's browser. Used for app updates: the
+  /// browser downloads the release APK quickly and shows Android's own
+  /// "Install / Update" prompt. Returns `false` if no browser could open it.
+  Future<bool> openUrlInBrowser(String url) async {
     if (Platform.environment.containsKey('FLUTTER_TEST')) {
-      return 'installer_launched';
+      return true;
     }
     try {
-      final String? status = await _channel.invokeMethod<String>(
-        'installApk',
-        <String, dynamic>{'filePath': filePath},
+      final bool? opened = await _channel.invokeMethod<bool>(
+        'openUrl',
+        <String, dynamic>{'url': url},
       );
-      return status ?? 'failed';
+      return opened ?? false;
     } on Object {
-      return 'failed';
+      return false;
     }
   }
 

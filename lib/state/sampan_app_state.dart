@@ -33,8 +33,6 @@ class SampanAppState {
     this.installedVersion = SampanConstants.appVersion,
     this.availableUpdate,
     this.isCheckingForUpdate = false,
-    this.isDownloadingUpdate = false,
-    this.updateDownloadProgress = 0.0,
     this.updateStatusMessage,
     this.isUpdateBannerDismissed = false,
     this.identity,
@@ -94,8 +92,6 @@ class SampanAppState {
   final String installedVersion;
   final ReleaseUpdateInfo? availableUpdate;
   final bool isCheckingForUpdate;
-  final bool isDownloadingUpdate;
-  final double updateDownloadProgress;
   final String? updateStatusMessage;
   final bool isUpdateBannerDismissed;
 
@@ -167,8 +163,6 @@ class SampanAppState {
     ReleaseUpdateInfo? availableUpdate,
     bool clearAvailableUpdate = false,
     bool? isCheckingForUpdate,
-    bool? isDownloadingUpdate,
-    double? updateDownloadProgress,
     String? updateStatusMessage,
     bool clearUpdateStatusMessage = false,
     bool? isUpdateBannerDismissed,
@@ -209,9 +203,6 @@ class SampanAppState {
       availableUpdate:
           clearAvailableUpdate ? null : (availableUpdate ?? this.availableUpdate),
       isCheckingForUpdate: isCheckingForUpdate ?? this.isCheckingForUpdate,
-      isDownloadingUpdate: isDownloadingUpdate ?? this.isDownloadingUpdate,
-      updateDownloadProgress:
-          updateDownloadProgress ?? this.updateDownloadProgress,
       updateStatusMessage: clearUpdateStatusMessage
           ? null
           : (updateStatusMessage ?? this.updateStatusMessage),
