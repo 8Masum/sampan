@@ -98,13 +98,13 @@ class _PeerTile extends ConsumerWidget {
           '${GeoMath.cardinalDirectionFromBearing(bearing)}';
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(SampanTheme.radiusMd),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: ListTile(
+        tileColor: scheme.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SampanTheme.radiusMd),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: CircleAvatar(
           radius: 22,
